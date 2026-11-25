@@ -62,7 +62,7 @@ class OnePieceGame {
     if (this.ship.canBoard(this.player.mesh.position)) { this.isSailing = true; this.ship.isControlled = true; }
   }
   animate() {
-    requestAnimationFrame(() => this.animate());
+    requestAnimationFrame(() => this.animate()); const dt = Math.min(this.clock.getDelta(), 0.05);
     this.world.update(dt); this.ship.update(dt,this.keys,this.world);
     this.player.update(dt,this.keys,this.world,this.isSailing,this.ship);
     if (!this.isSailing && !this.dlg) this.enemies.forEach(e => e.update(dt,this.player));
