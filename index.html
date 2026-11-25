@@ -44,4 +44,19 @@
   </div>
   <script type="module" src="js/main.js"></script>
 </body>
+    <div id="minimap-container"><canvas id="minimap-canvas" width="160" height="160"></canvas><div id="island-label">Open Sea</div></div>
+    <div id="quest-panel"><div class="quest-tag">LOG POSE QUEST</div><h3 id="quest-title">Loading...</h3><p id="quest-objective">...</p><div id="quest-distance">Waypoint: -- m</div></div>
+  </div>
+  <div id="interact-prompt" class="hidden">Press <span>[F]</span> to Interact</div>
+  <div id="banner-alert" class="hidden"></div>
+  <div id="dialogue-box" class="hidden">
+    <div class="dialogue-header"><h3 id="dialogue-speaker">Speaker</h3><span id="dialogue-role">Role</span></div>
+    <p id="dialogue-text">Dialogue content goes here.</p>
+    <div class="dialogue-footer">Press <span>[F]</span> or <span>[Space]</span> to continue</div>
+  </div>
+  <div id="controls-bar">
+    <span><b>WASD</b> Move / Steer</span><span><b>Shift</b> Sprint</span><span><b>Space</b> Jump</span><span><b>Left-Click</b> Punch Combo</span><span><b>Q</b> Gomu Pistol</span><span><b>E</b> Gomu Gatling</span><span><b>F</b> Interact / Board Ship</span><span><b>Mouse</b> Orbit Camera</span>
+  </div>
+  <script type="module" src="js/main.js"></script>
+</body>
 </html>
