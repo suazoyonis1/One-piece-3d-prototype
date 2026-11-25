@@ -5,13 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>One Piece: East Blue 3D Prototype</title>
   <link rel="stylesheet" href="css/style.css" />
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "./js/three.module.js"
-      }
-    }
-  </script>
+  <script type="importmap">{"imports":{"three":"./js/three.module.js"}}</script>
 </head>
 <body>
   <canvas id="game-canvas"></canvas>
@@ -24,24 +18,11 @@
       <div class="crew-row"><span>🏴‍☠️ Crew:</span><strong id="crew-text">Luffy</strong></div>
     </div>
     <div id="abilities-panel">
-      <div class="ability-slot" id="ability-q"><span class="key">Q</span><span class="name">Gomu Pistol</span><div class="cooldown-overlay" id="cd-q"></div></div>
-      <div class="ability-slot" id="ability-e"><span class="key">E</span><span class="name">Gomu Gatling</span><div class="cooldown-overlay" id="cd-e"></div></div>
+      <div class="ability-slot"><span class="key">Q</span><span class="name">Gomu Pistol</span><div class="cooldown-overlay" id="cd-q"></div></div>
+      <div class="ability-slot"><span class="key">E</span><span class="name">Gomu Gatling</span><div class="cooldown-overlay" id="cd-e"></div></div>
     </div>
   </div>
   <div id="hud-top-right">
-  </div>
-  <div id="interact-prompt" class="hidden">Press <span>[F]</span> to Interact</div>
-  <div id="banner-alert" class="hidden"></div>
-  <div id="dialogue-box" class="hidden">
-    <div class="dialogue-header"><h3 id="dialogue-speaker">Speaker</h3><span id="dialogue-role">Role</span></div>
-    <p id="dialogue-text">Dialogue content goes here.</p>
-    <div class="dialogue-footer">Press <span>[F]</span> or <span>[Space]</span> to continue</div>
-  </div>
-  <div id="controls-bar">
-    <span><b>WASD</b> Move / Steer</span><span><b>Shift</b> Sprint</span><span><b>Space</b> Jump</span><span><b>Left-Click</b> Punch Combo</span><span><b>Q</b> Gomu Pistol</span><span><b>E</b> Gomu Gatling</span><span><b>F</b> Interact / Board Ship</span><span><b>Mouse</b> Orbit Camera</span>
-  </div>
-  <script type="module" src="js/main.js"></script>
-</body>
     <div id="minimap-container"><canvas id="minimap-canvas" width="160" height="160"></canvas><div id="island-label">Open Sea</div></div>
     <div id="quest-panel"><div class="quest-tag">LOG POSE QUEST</div><h3 id="quest-title">Loading...</h3><p id="quest-objective">...</p><div id="quest-distance">Waypoint: -- m</div></div>
   </div>
@@ -49,12 +30,19 @@
   <div id="banner-alert" class="hidden"></div>
   <div id="dialogue-box" class="hidden">
     <div class="dialogue-header"><h3 id="dialogue-speaker">Speaker</h3><span id="dialogue-role">Role</span></div>
-    <p id="dialogue-text">Dialogue content goes here.</p>
+    <p id="dialogue-text">...</p>
     <div class="dialogue-footer">Press <span>[F]</span> or <span>[Space]</span> to continue</div>
   </div>
-  <div id="controls-bar">
-    <span><b>WASD</b> Move / Steer</span><span><b>Shift</b> Sprint</span><span><b>Space</b> Jump</span><span><b>Left-Click</b> Punch Combo</span><span><b>Q</b> Gomu Pistol</span><span><b>E</b> Gomu Gatling</span><span><b>F</b> Interact / Board Ship</span><span><b>Mouse</b> Orbit Camera</span>
+  <div id="controls-bar"><span><b>WASD</b> Move / Steer</span><span><b>Shift</b> Sprint</span><span><b>Space</b> Jump</span><span><b>Left-Click</b> Punch</span><span><b>Q</b> Pistol</span><span><b>E</b> Gatling</span><span><b>F</b> Interact / Board</span></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+  <div id="banner-alert" class="hidden"></div>
+  <div id="dialogue-box" class="hidden">
+    <div class="dialogue-header"><h3 id="dialogue-speaker">Speaker</h3><span id="dialogue-role">Role</span></div>
+    <p id="dialogue-text">...</p>
+    <div class="dialogue-footer">Press <span>[F]</span> or <span>[Space]</span> to continue</div>
   </div>
+  <div id="controls-bar"><span><b>WASD</b> Move</span><span><b>Shift</b> Sprint</span><span><b>Space</b> Jump</span><span><b>Click</b> Punch</span><span><b>Q</b> Pistol</span><span><b>E</b> Gatling</span><span><b>F</b> Interact</span></div>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
