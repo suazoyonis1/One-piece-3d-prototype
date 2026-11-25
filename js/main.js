@@ -7,10 +7,12 @@ import { QuestManager } from './quests.js';
 
 class OnePieceGame {
   constructor() {
-    this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas'), antialias: true });
+    const c = document.getElementById('game-canvas');
+    this.renderer = new THREE.WebGLRenderer({ canvas: c, antialias: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(1);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+    this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 1200);
     this.world = new World(this.scene);
     this.player = new PlayerController(this.scene, this.camera);
     this.ship = new PirateShip(this.scene);
@@ -18,25 +20,19 @@ class OnePieceGame {
     this.npcs = npcs; this.enemies = enemies;
     this.qm = new QuestManager(this.scene, this.world, this.player, this.ship, this.npcs, this.enemies);
     this.keys = {}; this.isSailing = false; this.dlg = null; this.clock = new THREE.Clock();
-    this.bindEvents();
-    this.animate();
+    this.bindEvents(); this.animate();
   }
   bindEvents() {
+    window.addEventListener('resize', () => { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight); });
     window.addEventListener('keydown', e => {
       this.keys[e.code] = true;
-      if (this.dlg && (e.code === 'KeyF' || e.code === 'Space')) {
-        const n = this.dlg; this.dlg = null;
-        document.getElementById('dialogue-box').classList.add('hidden');
-        this.qm.onTalkToNPC(n); return;
-      }
+      if (this.dlg && (e.code === 'KeyF' || e.code === 'Space')) { const n = this.dlg; this.dlg = null; document.getElementById('dialogue-box').classList.add('hidden'); this.qm.onTalkToNPC(n); return; }
       if (e.code === 'KeyF') this.interact();
       if (!this.isSailing && e.code === 'KeyQ') this.player.useGomuPistol(this.enemies);
       if (!this.isSailing && e.code === 'KeyE') this.player.useGomuGatling(this.enemies);
     });
     window.addEventListener('keyup', e => this.keys[e.code] = false);
-    window.addEventListener('mousedown', e => {
-      if (e.button === 0 && !this.dlg && !this.isSailing) this.player.performMeleeCombo(this.enemies);
-    });
+    window.addEventListener('mousedown', e => { if (e.button === 0 && !this.dlg && !this.isSailing) this.player.performMeleeCombo(this.enemies); });
   }
   interact() {
     if (this.isSailing) {
@@ -45,21 +41,13 @@ class OnePieceGame {
       return;
     }
     const npc = this.npcs.find(n => this.player.mesh.position.distanceTo(n.mesh.position) < 5);
-    if (npc) {
-      this.dlg = npc;
-      document.getElementById('dialogue-speaker').textContent = npc.name;
-      document.getElementById('dialogue-role').textContent = npc.role;
-      document.getElementById('dialogue-text').textContent = npc.dialogue;
-      document.getElementById('dialogue-box').classList.remove('hidden');
-      return;
-    }
+    if (npc) { this.dlg = npc; document.getElementById('dialogue-speaker').textContent = npc.name; document.getElementById('dialogue-role').textContent = npc.role; document.getElementById('dialogue-text').textContent = npc.dialogue; document.getElementById('dialogue-box').classList.remove('hidden'); return; }
     if (this.ship.canBoard(this.player.mesh.position)) { this.isSailing = true; this.ship.isControlled = true; }
   }
   animate() {
     requestAnimationFrame(() => this.animate());
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.world.update(dt); this.ship.update(dt, this.keys, this.world);
-    this.player.update(dt, this.keys, this.world, this.isSailing, this.ship);
+    this.world.update(dt); this.ship.update(dt, this.keys, this.world); this.player.update(dt, this.keys, this.world, this.isSailing, this.ship);
     if (!this.isSailing && !this.dlg) this.enemies.forEach(e => e.update(dt, this.player));
     this.qm.update(this.player.mesh.position, this.isSailing);
     document.getElementById('hp-bar').style.width = `${this.player.hp}%`;
