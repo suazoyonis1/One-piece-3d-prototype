@@ -55,4 +55,14 @@ class OnePieceGame {
     this.renderer.render(this.scene, this.camera);
   }
 }
+    const dt = Math.min(this.clock.getDelta(), 0.05);
+    this.world.update(dt); this.ship.update(dt, this.keys, this.world);
+    this.player.update(dt, this.keys, this.world, this.isSailing, this.ship);
+    if (!this.isSailing && !this.dlg) this.enemies.forEach(e => e.update(dt, this.player));
+    this.qm.update(this.player.mesh.position, this.isSailing);
+    document.getElementById('hp-bar').style.width = `${this.player.hp}%`;
+    document.getElementById('stamina-bar').style.width = `${this.player.stamina}%`;
+    this.renderer.render(this.scene, this.camera);
+  }
+}
 window.addEventListener('DOMContentLoaded', () => new OnePieceGame());
