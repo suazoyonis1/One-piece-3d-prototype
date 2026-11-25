@@ -39,33 +39,6 @@ class OnePieceGame {
       return;
     }
     const npc = this.npcs.find(n => this.player.mesh.position.distanceTo(n.mesh.position) < 5);
-    if (npc) {
-      this.dlg = npc; document.getElementById('dialogue-speaker').textContent = npc.name;
-      document.getElementById('dialogue-role').textContent = npc.role; document.getElementById('dialogue-text').textContent = npc.dialogue;
-      document.getElementById('dialogue-box').classList.remove('hidden'); return;
-    }
-    if (this.ship.canBoard(this.player.mesh.position)) { this.isSailing = true; this.ship.isControlled = true; }
-  }
-  animate() {
-    requestAnimationFrame(() => this.animate());
-    const dt = Math.min(this.clock.getDelta(), 0.05);
-    this.world.update(dt); this.ship.update(dt, this.keys, this.world); this.player.update(dt, this.keys, this.world, this.isSailing, this.ship);
-    if (!this.isSailing && !this.dlg) this.enemies.forEach(e => e.update(dt, this.player));
-    this.qm.update(this.player.mesh.position, this.isSailing);
-    document.getElementById('hp-bar').style.width = `${this.player.hp}%`;
-    document.getElementById('stamina-bar').style.width = `${this.player.stamina}%`;
-    this.renderer.render(this.scene, this.camera);
-  }
-}
-    window.addEventListener('mousedown', e => { if (e.button === 0 && !this.dlg && !this.isSailing) this.player.performMeleeCombo(this.enemies); });
-  }
-  interact() {
-    if (this.isSailing) {
-      const isl = this.world.islands.find(i => Math.hypot(this.ship.mesh.position.x - i.center.x, this.ship.mesh.position.z - i.center.z) <= i.radius + 28);
-      if (isl) { this.isSailing = false; this.ship.isControlled = false; this.player.mesh.position.set(isl.center.x, isl.groundY, isl.center.z + isl.radius - 8); }
-      return;
-    }
-    const npc = this.npcs.find(n => this.player.mesh.position.distanceTo(n.mesh.position) < 5);
     if (npc) { this.dlg = npc; document.getElementById('dialogue-speaker').textContent = npc.name; document.getElementById('dialogue-role').textContent = npc.role; document.getElementById('dialogue-text').textContent = npc.dialogue; document.getElementById('dialogue-box').classList.remove('hidden'); return; }
     if (this.ship.canBoard(this.player.mesh.position)) { this.isSailing = true; this.ship.isControlled = true; }
   }
