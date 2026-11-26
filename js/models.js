@@ -1,570 +1,317 @@
-
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// ==========================================
-// MATERIALS
-// ==========================================
+// materials
+function material(color) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.75
+  });
+}
 
-const materials = {
-  skin: new THREE.MeshStandardMaterial({ color: 0xf2b58c, roughness: 0.85 }),
-  luffyShirt: new THREE.MeshStandardMaterial({ color: 0xc92828, roughness: 0.8 }),
-  shorts: new THREE.MeshStandardMaterial({ color: 0x2453a0, roughness: 0.85 }),
-  hair: new THREE.MeshStandardMaterial({ color: 0x24150e }),
-  straw: new THREE.MeshStandardMaterial({ color: 0xd9a52d }),
-  strawDark: new THREE.MeshStandardMaterial({ color: 0x8b5a20 }),
-  black: new THREE.MeshStandardMaterial({ color: 0x171717 }),
-  white: new THREE.MeshStandardMaterial({ color: 0xf3eee0 }),
-  green: new THREE.MeshStandardMaterial({ color: 0x23834b }),
-  orange: new THREE.MeshStandardMaterial({ color: 0xe58a24 }),
-  blue: new THREE.MeshStandardMaterial({ color: 0x263f88 }),
-  gold: new THREE.MeshStandardMaterial({ color: 0xd9a52d, metalness: 0.65, roughness: 0.3 }),
-  wood: new THREE.MeshStandardMaterial({ color: 0x87502d, roughness: 0.85 }),
-  darkWood: new THREE.MeshStandardMaterial({ color: 0x4b2919, roughness: 0.9 }),
-  lightWood: new THREE.MeshStandardMaterial({ color: 0xb77b42, roughness: 0.85 }),
-  sail: new THREE.MeshStandardMaterial({ color: 0xf1e6c8, side: THREE.DoubleSide, roughness: 0.95 }),
-  red: new THREE.MeshStandardMaterial({ color: 0xb92d2d, side: THREE.DoubleSide, roughness: 0.95 })
-};
+function addSphere(parent, color, position, scale) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 16, 12),
+    material(color)
+  );
 
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
+  mesh.position.set(...position);
+  mesh.scale.set(...scale);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
 
-function addMesh(parent, geometry, material, position = [0, 0, 0]) {
-  const mesh = new THREE.Mesh(geometry, material);
+  return mesh;
+}
+
+function addBox(parent, color, position, scale) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...scale),
+    material(color)
+  );
+
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
-function box(parent, size, position, material) {
-  return addMesh(
-    parent,
-    new THREE.BoxGeometry(...size),
-    material,
-    position
-  );
-}
-
-function sphere(parent, radius, position, material, scale = [1, 1, 1]) {
-  const mesh = addMesh(
-    parent,
-    new THREE.SphereGeometry(radius, 16, 12),
-    material,
-    position
-  );
-
-  mesh.scale.set(...scale);
-  return mesh;
-}
-
-function cylinder(parent, top, bottom, height, position, material, segments = 12) {
-  return addMesh(
-    parent,
-    new THREE.CylinderGeometry(top, bottom, height, segments),
-    material,
-    position
-  );
-}
-
-// ==========================================
-// PROCEDURAL CHARACTER MODELS
-// ==========================================
-
-export function createCharacterMesh(type = 'luffy') {
-  const name = String(type).toLowerCase();
+// fallback characters
+function createProceduralCharacter(type = 'pirate') {
   const root = new THREE.Group();
-  const body = new THREE.Group();
 
+  const colors = {
+    luffy: [0xf1c27d, 0xdc2626, 0x1d4ed8, 0x171717],
+    zoro: [0xf1c27d, 0xf8fafc, 0x14532d, 0x16a34a],
+    nami: [0xf5cba7, 0x38bdf8, 0x1d4ed8, 0xf97316],
+    sanji: [0xf1c27d, 0x111827, 0x111827, 0xfacc15],
+    marine: [0xf1c27d, 0xffffff, 0x1e3a8a, 0x1f2937],
+    pirate: [0xd2996c, 0x7f1d1d, 0x292524, 0x111827]
+  };
+
+  const [skin, shirt, pants, hair] =
+    colors[type] || colors.pirate;
+
+  const body = new THREE.Group();
   root.add(body);
 
-  let shirt = materials.luffyShirt;
-  let pants = materials.shorts;
-  let hair = materials.hair;
-
-  if (name.includes('zoro')) {
-    shirt = materials.green;
-    pants = materials.darkWood;
-  } else if (name.includes('nami')) {
-    shirt = materials.orange;
-    pants = materials.blue;
-    hair = materials.orange;
-  } else if (name.includes('sanji')) {
-    shirt = materials.black;
-    pants = materials.black;
-    hair = materials.gold;
-  } else if (name.includes('marine') || name.includes('morgan')) {
-    shirt = materials.white;
-    pants = materials.blue;
-  } else if (name.includes('mayor')) {
-    shirt = materials.green;
-    pants = materials.darkWood;
-  } else if (name.includes('pirate')) {
-    shirt = materials.darkWood;
-    pants = materials.black;
-  }
-
-  // torso
-  const torso = cylinder(
-    body,
-    0.43,
-    0.34,
-    0.9,
-    [0, 1.35, 0],
-    shirt,
-    12
-  );
-
-  torso.rotation.z = 0;
-
-  // neck and head
-  cylinder(body, 0.14, 0.14, 0.2, [0, 1.9, 0], materials.skin);
-
-  sphere(body, 0.34, [0, 2.25, 0], materials.skin, [0.9, 1.1, 0.85]);
-
-  // hair
-  if (!name.includes('marine') && !name.includes('morgan')) {
-    sphere(body, 0.34, [0, 2.48, -0.03], hair, [1, 0.65, 0.9]);
-  } else {
-    sphere(body, 0.34, [0, 2.48, -0.03], materials.white, [1, 0.55, 0.9]);
-  }
+  addSphere(body, shirt, [0, 1.55, 0], [0.42, 0.55, 0.28]);
+  addSphere(body, pants, [0, 0.95, 0], [0.35, 0.22, 0.25]);
+  addSphere(body, skin, [0, 2.35, 0], [0.32, 0.38, 0.3]);
+  addSphere(body, hair, [0, 2.65, -0.02], [0.34, 0.2, 0.32]);
 
   // eyes
-  sphere(body, 0.045, [-0.12, 2.27, 0.285], materials.black);
-  sphere(body, 0.045, [0.12, 2.27, 0.285], materials.black);
-
-  // mouth
-  const mouth = box(
-    body,
-    [0.12, 0.025, 0.025],
-    [0, 2.08, 0.3],
-    materials.black
-  );
-
-  // Luffy straw hat
-  if (name.includes('luffy')) {
-    cylinder(body, 0.42, 0.42, 0.07, [0, 2.66, 0], materials.straw, 20);
-    cylinder(body, 0.25, 0.25, 0.2, [0, 2.76, 0], materials.straw, 20);
-
-    cylinder(body, 0.43, 0.43, 0.045, [0, 2.65, 0], materials.red, 20);
+  for (const x of [-0.12, 0.12]) {
+    addSphere(body, 0xffffff, [x, 2.39, 0.27], [0.055, 0.07, 0.035]);
+    addSphere(body, 0x111111, [x, 2.39, 0.3], [0.025, 0.04, 0.02]);
   }
 
-  // Zoro bandana
-  if (name.includes('zoro')) {
-    box(body, [0.66, 0.1, 0.58], [0, 2.47, 0], materials.green);
-  }
-
-  // legs
-  const legs = [];
-
-  for (const side of [-1, 1]) {
-    const leg = cylinder(
-      body,
-      0.13,
-      0.16,
-      0.65,
-      [side * 0.19, 0.55, 0],
-      pants
+  // straw hat
+  if (type === 'luffy') {
+    const brim = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.62, 0.62, 0.07, 24),
+      material(0xf4bd35)
     );
+    brim.position.y = 2.82;
+    body.add(brim);
 
-    legs.push(leg);
-
-    // shoes
-    sphere(
-      body,
-      0.16,
-      [side * 0.19, 0.16, 0.08],
-      materials.black,
-      [1, 0.65, 1.3]
+    const hat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.38, 0.28, 24),
+      material(0xf4bd35)
     );
+    hat.position.y = 2.96;
+    body.add(hat);
+
+    addBox(body, 0xc62828, [0, 2.87, 0], [0.65, 0.06, 0.65]);
   }
 
   // arms
   const arms = [];
 
   for (const side of [-1, 1]) {
-    const arm = cylinder(
-      body,
-      0.12,
-      0.15,
-      0.72,
-      [side * 0.48, 1.38, 0]
-    , materials.skin);
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.48, 1.85, 0);
+    body.add(arm);
 
-    arm.rotation.z = side * -0.18;
+    addSphere(arm, shirt, [0, -0.15, 0], [0.17, 0.25, 0.17]);
+    addSphere(arm, skin, [side * 0.04, -0.48, 0], [0.13, 0.3, 0.13]);
     arms.push(arm);
-
-    sphere(body, 0.14, [side * 0.5, 0.98, 0], materials.skin);
   }
 
-  // Luffy's open shirt sleeves
-  if (name.includes('luffy')) {
-    sphere(body, 0.17, [-0.43, 1.58, 0], shirt, [1, 0.85, 1]);
-    sphere(body, 0.17, [0.43, 1.58, 0], shirt, [1, 0.85, 1]);
+  // legs
+  const legs = [];
+
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.19, 0.85, 0);
+    body.add(leg);
+
+    addSphere(leg, pants, [0, -0.22, 0], [0.16, 0.3, 0.16]);
+    addSphere(leg, pants, [0, -0.55, 0], [0.14, 0.25, 0.14]);
+    addSphere(leg, 0x713f12, [0, -0.78, 0.08], [0.18, 0.11, 0.25]);
+
+    legs.push(leg);
   }
 
-  root.userData.animate = (time, speed = 0, state = 'idle') => {
-    const moving = speed > 0.1;
-    const swing = moving ? Math.sin(time * 10) * 0.55 : 0;
+  root.userData.animate = (time = 0, speed = 0, state = 'idle') => {
+    const moving = state === 'walk' || state === 'run';
+    const amount = moving ? Math.sin(time * 10) * speed : 0;
 
-    legs[0].rotation.x = swing;
-    legs[1].rotation.x = -swing;
+    legs[0].rotation.x = amount;
+    legs[1].rotation.x = -amount;
+    arms[0].rotation.x = -amount * 0.7;
+    arms[1].rotation.x = amount * 0.7;
 
-    arms[0].rotation.x = -swing * 0.7;
-    arms[1].rotation.x = swing * 0.7;
-
-    body.position.y = moving
-      ? Math.abs(Math.sin(time * 10)) * 0.06
-      : Math.sin(time * 2) * 0.015;
-
-    if (state === 'attack') {
-      arms[1].rotation.x = -1.5;
-    }
-
-    if (state === 'jump') {
-      legs[0].rotation.x = -0.5;
-      legs[1].rotation.x = 0.5;
+    if (state === 'idle') {
+      body.position.y = Math.sin(time * 2) * 0.02;
+    } else {
+      body.position.y = 0;
     }
   };
-
-  root.traverse(object => {
-    if (object.isMesh) {
-      object.castShadow = true;
-      object.receiveShadow = true;
-    }
-  });
 
   return root;
 }
 
-// ==========================================
-// GOING MERRY SHIP
-// ==========================================
+// load your real Luffy model
+function createLuffyMesh() {
+  const root = new THREE.Group();
+  const fallback = createProceduralCharacter('luffy');
 
+  root.add(fallback);
+  root.userData.loaded = false;
+  root.userData.loadFailed = false;
+
+  const loader = new GLTFLoader();
+
+  let mixer = null;
+  let previousTime = null;
+
+  loader.load(
+    './models/luffy/scene.gltf',
+
+    (gltf) => {
+      const model = gltf.scene;
+
+      // automatically resize and center the model
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+
+      const targetHeight = 2.8;
+      const scale = targetHeight / (size.y || 1);
+
+      model.scale.setScalar(scale);
+      model.position.set(
+        -center.x * scale,
+        -bounds.min.y * scale,
+        -center.z * scale
+      );
+
+      model.traverse((object) => {
+        if (object.isMesh) {
+          object.castShadow = true;
+          object.receiveShadow = true;
+        }
+      });
+
+      root.remove(fallback);
+      root.add(model);
+      root.userData.loaded = true;
+
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+
+        const idle =
+          gltf.animations.find(a => /idle|stand/i.test(a.name)) ||
+          gltf.animations[0];
+
+        mixer.clipAction(idle).play();
+      }
+
+      console.log('Luffy model loaded successfully');
+    },
+
+    (progress) => {
+      if (progress.total > 0) {
+        console.log(
+          'Loading Luffy:',
+          Math.round(progress.loaded / progress.total * 100) + '%'
+        );
+      }
+    },
+
+    (error) => {
+      root.userData.loadFailed = true;
+      console.error('Luffy model failed to load:', error);
+    }
+  );
+
+  root.userData.animate = (time = 0, speed = 0, state = 'idle') => {
+    if (!root.userData.loaded) {
+      fallback.userData.animate?.(time, speed, state);
+      return;
+    }
+
+    if (mixer) {
+      const delta = previousTime === null
+        ? 0
+        : THREE.MathUtils.clamp(time - previousTime, 0, 0.05);
+
+      mixer.update(delta);
+      previousTime = time;
+    }
+  };
+
+  return root;
+}
+
+// character export
+export function createCharacterMesh(type = 'pirate') {
+  if (type === 'luffy') {
+    return createLuffyMesh();
+  }
+
+  return createProceduralCharacter(type);
+}
+
+// going merry ship
 export function createGoingMerryMesh() {
   const ship = new THREE.Group();
 
-  // hull shape
-  const stations = [
-    { z: -6.5, width: 1.2 },
-    { z: -5.5, width: 2.5 },
-    { z: -3.5, width: 3.6 },
-    { z: 0, width: 4.1 },
-    { z: 3.5, width: 3.7 },
-    { z: 5.5, width: 2.7 },
-    { z: 6.8, width: 0.15 }
-  ];
+  const wood = material(0x92400e);
+  const deckMaterial = material(0xd97706);
+  const white = material(0xf8fafc);
 
-  const crossSection = [
-    [0, 1.3],
-    [-0.75, 0.85],
-    [-1, 0.2],
-    [-0.65, -0.65],
-    [0, -1],
-    [0.65, -0.65],
-    [1, 0.2],
-    [0.75, 0.85]
-  ];
-
-  const vertices = [];
-  const indices = [];
-
-  for (const station of stations) {
-    for (const [x, y] of crossSection) {
-      vertices.push(
-        x * station.width,
-        y * 1.15,
-        station.z
-      );
-    }
-  }
-
-  for (let i = 0; i < stations.length - 1; i++) {
-    for (let j = 0; j < crossSection.length; j++) {
-      const a = i * crossSection.length + j;
-      const b = i * crossSection.length + (j + 1) % crossSection.length;
-      const c = (i + 1) * crossSection.length + j;
-      const d = (i + 1) * crossSection.length + (j + 1) % crossSection.length;
-
-      indices.push(a, b, c, b, d, c);
-    }
-  }
-
-  const hullGeometry = new THREE.BufferGeometry();
-
-  hullGeometry.setAttribute(
-    'position',
-    new THREE.Float32BufferAttribute(vertices, 3)
+  const hull = new THREE.Mesh(
+    new THREE.BoxGeometry(5.5, 2.2, 13),
+    wood
   );
+  hull.position.y = 1;
+  ship.add(hull);
 
-  hullGeometry.setIndex(indices);
-  hullGeometry.computeVertexNormals();
-
-  addMesh(
-    ship,
-    hullGeometry,
-    new THREE.MeshStandardMaterial({
-      color: 0x75401f,
-      roughness: 0.8,
-      side: THREE.DoubleSide
-    })
+  const deck = new THREE.Mesh(
+    new THREE.BoxGeometry(5.1, 0.2, 12.6),
+    deckMaterial
   );
+  deck.position.y = 2.15;
+  ship.add(deck);
 
-  // deck
-  box(ship, [7.1, 0.22, 12.2], [0, 1.35, -0.1], materials.lightWood);
+  const mast = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.28, 11, 12),
+    wood
+  );
+  mast.position.set(0, 7.2, 0.5);
+  ship.add(mast);
 
-  // deck planks
-  for (let z = -5.7; z <= 5.7; z += 0.55) {
-    box(
-      ship,
-      [6.8, 0.025, 0.035],
-      [0, 1.48, z],
-      materials.darkWood
-    );
-  }
+  const sail = new THREE.Mesh(
+    new THREE.BoxGeometry(6.2, 5.2, 0.15),
+    white
+  );
+  sail.position.set(0, 8.2, 0.8);
+  ship.add(sail);
 
-  // gold trim
+  // front figurehead
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.85, 16, 16),
+    white
+  );
+  head.position.set(0, 2.7, 7.2);
+  ship.add(head);
+
+  const figureHead = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 16, 12),
+    material(0xf4bd35)
+  );
+  figureHead.position.set(0, 3, 7.75);
+  ship.add(figureHead);
+
+  // railings
+  const railingMaterial = material(0x78350f);
+
   for (const side of [-1, 1]) {
-    box(
-      ship,
-      [0.15, 0.18, 10.5],
-      [side * 3.35, 1.45, -0.1],
-      materials.gold
+    const railing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.65, 10),
+      railingMaterial
     );
+    railing.position.set(side * 2.45, 2.55, 0);
+    ship.add(railing);
   }
 
-  // railing
-  for (const side of [-1, 1]) {
-    for (let z = -5; z <= 5; z += 1.1) {
-      cylinder(
-        ship,
-        0.07,
-        0.07,
-        0.65,
-        [side * 3.35, 1.8, z],
-        materials.wood
-      );
-    }
-
-    box(
-      ship,
-      [0.12, 0.12, 10.5],
-      [side * 3.35, 2.1, 0],
-      materials.lightWood
-    );
-  }
-
-  // mast
-  cylinder(ship, 0.18, 0.27, 10.5, [0, 6.5, -0.5], materials.wood, 16);
-
-  // mast support
-  box(ship, [0.4, 0.35, 1.1], [0, 1.65, -0.5], materials.darkWood);
-
-  // crossbars
-  cylinder(ship, 0.09, 0.09, 9, [0, 8.5, -0.5], materials.wood, 12);
-  cylinder(ship, 0.08, 0.08, 7.3, [0, 5.3, -0.5], materials.wood, 12);
-
-  // striped curved sails
-  function makeSail(width, height, y, z, segments = 12) {
-    const sailGroup = new THREE.Group();
-
-    const positions = [];
-    const colors = [];
-    const indices = [];
-
-    const cream = new THREE.Color(0xf1e6c8);
-    const red = new THREE.Color(0xb92d2d);
-
-    for (let row = 0; row <= 8; row++) {
-      const v = row / 8;
-
-      for (let col = 0; col <= segments; col++) {
-        const u = col / segments;
-
-        const x = (u - 0.5) * width;
-        const curve = Math.sin(u * Math.PI) * 0.35;
-
-        positions.push(
-          x,
-          -v * height + curve,
-          Math.sin(v * Math.PI) * 0.25
-        );
-
-        const stripe = Math.floor(u * segments / 2) % 2 === 0;
-        const color = stripe ? cream : red;
-
-        colors.push(color.r, color.g, color.b);
-      }
-    }
-
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < segments; col++) {
-        const a = row * (segments + 1) + col;
-        const b = a + 1;
-        const c = a + segments + 1;
-        const d = c + 1;
-
-        indices.push(a, c, b, b, c, d);
-      }
-    }
-
-    const geometry = new THREE.BufferGeometry();
-
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
-
-    geometry.setAttribute(
-      'color',
-      new THREE.Float32BufferAttribute(colors, 3)
-    );
-
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-
-    const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      side: THREE.DoubleSide,
-      roughness: 0.95
-    });
-
-    addMesh(sailGroup, geometry, material);
-    sailGroup.position.set(0, y, z);
-    ship.add(sailGroup);
-
-    return sailGroup;
-  }
-
-  makeSail(7.2, 3.5, 9.7, -0.5);
-  makeSail(5.5, 2.1, 6.4, -0.5);
-
-  // rigging ropes
-  function rope(start, end, radius = 0.035) {
-    const a = new THREE.Vector3(...start);
-    const b = new THREE.Vector3(...end);
-
-    const direction = new THREE.Vector3().subVectors(b, a);
-    const length = direction.length();
-
-    const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(radius, radius, length, 6),
-      materials.darkWood
-    );
-
-    mesh.position.copy(a).add(b).multiplyScalar(0.5);
-    mesh.quaternion.setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction.normalize()
-    );
-
-    mesh.castShadow = true;
-    ship.add(mesh);
-  }
-
-  rope([-3.5, 2, 5.5], [0, 11.5, -0.5]);
-  rope([3.5, 2, 5.5], [0, 11.5, -0.5]);
-  rope([-3.5, 2, -5.5], [0, 11.5, -0.5]);
-  rope([3.5, 2, -5.5], [0, 11.5, -0.5]);
-
-  // sheep figurehead at the bow
-  const figurehead = new THREE.Group();
-  figurehead.position.set(0, 2.5, 6.4);
-  ship.add(figurehead);
-
-  sphere(figurehead, 0.65, [0, 0.2, 0.35], materials.white, [1, 1, 1.1]);
-  sphere(figurehead, 0.4, [0, -0.2, 0.75], materials.white, [1, 0.75, 0.8]);
-
-  // sheep muzzle
-  sphere(figurehead, 0.25, [0, -0.2, 1.05], materials.white);
-  sphere(figurehead, 0.08, [-0.12, -0.15, 1.25], materials.black);
-  sphere(figurehead, 0.08, [0.12, -0.15, 1.25], materials.black);
-
-  // eyes
-  sphere(figurehead, 0.08, [-0.32, 0.35, 0.8], materials.black);
-  sphere(figurehead, 0.08, [0.32, 0.35, 0.8], materials.black);
-
-  // horns
-  for (const side of [-1, 1]) {
-    const horn = cylinder(
-      figurehead,
-      0.015,
-      0.14,
-      0.8,
-      [side * 0.55, 0.55, 0.2],
-      materials.gold
-    );
-
-    horn.rotation.z = side * -0.9;
-  }
-
-  // ears
-  sphere(figurehead, 0.28, [-0.7, 0.2, 0.2], materials.white, [1.3, 0.45, 0.7]);
-  sphere(figurehead, 0.28, [0.7, 0.2, 0.2], materials.white, [1.3, 0.45, 0.7]);
-
-  // rear cabin
-  box(ship, [3.8, 1.8, 2.5], [0, 2.3, -4.2], materials.wood);
-  box(ship, [4.1, 0.2, 2.8], [0, 3.25, -4.2], materials.darkWood);
-
-  // cabin windows
-  for (const side of [-1, 1]) {
-    cylinder(
-      ship,
-      0.28,
-      0.28,
-      0.08,
-      [side * 1.95, 2.55, -4.2],
-      materials.gold,
-      16
-    );
-  }
-
-  // cabin door
-  box(ship, [0.8, 1.25, 0.08], [0, 2.05, -2.92], materials.darkWood);
-
-  // ship wheel
-  const wheel = new THREE.Group();
-  wheel.position.set(0, 2.6, -2.7);
-  ship.add(wheel);
-
-  const wheelRing = new THREE.Mesh(
-    new THREE.TorusGeometry(0.48, 0.055, 8, 20),
-    materials.wood
+  const rearRail = new THREE.Mesh(
+    new THREE.BoxGeometry(4.9, 0.65, 0.15),
+    railingMaterial
   );
+  rearRail.position.set(0, 2.55, -5.9);
+  ship.add(rearRail);
 
-  wheel.add(wheelRing);
-
-  cylinder(
-    wheel,
-    0.1,
-    0.1,
-    0.25,
-    [0, 0, 0],
-    materials.gold
-  );
-
-  // small flag
-  box(ship, [0.08, 1.1, 0.08], [0, 11.8, -0.5], materials.wood);
-
-  const flag = box(
-    ship,
-    [1.5, 0.8, 0.05],
-    [0.75, 11.7, -0.5],
-    materials.white
-  );
-
-  flag.rotation.z = -0.08;
-
-  // finish
-  ship.traverse(object => {
+  ship.traverse((object) => {
     if (object.isMesh) {
       object.castShadow = true;
       object.receiveShadow = true;
     }
   });
-
-  ship.userData.isGoingMerry = true;
 
   return ship;
 }
