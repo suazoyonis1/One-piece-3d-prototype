@@ -8,9 +8,18 @@ import { QuestManager } from './quests.js';
 class OnePieceGame {
   constructor() {
     const c = document.getElementById('game-canvas');
-    this.renderer = new THREE.WebGLRenderer({ canvas: c, antialias: false, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(1);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+this.renderer = new THREE.WebGLRenderer({
+  canvas: c,
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+
+this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+this.renderer.setSize(window.innerWidth, window.innerHeight);
+this.renderer.shadowMap.enabled = true;
+this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+this.renderer.toneMappingExposure = 1.15;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 1200);
     this.world = new World(this.scene);
