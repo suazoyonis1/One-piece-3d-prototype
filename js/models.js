@@ -152,7 +152,7 @@ function createLuffyMesh() {
 
   const manager = new THREE.LoadingManager();
 
-  // Your GitHub folder is named "texture", not "textures".
+  // Convert the model's texture folder paths.
   manager.setURLModifier((url) => {
     return url.replace(/\/textures\//g, '/texture/');
   });
@@ -168,7 +168,7 @@ function createLuffyMesh() {
 
     model.traverse((object) => {
       if (
-        object.isBone &&
+        (object.isBone || object.type === 'Bone') &&
         pattern.test(object.name)
       ) {
         found = object;
@@ -198,49 +198,67 @@ function createLuffyMesh() {
       .multiply(offset);
   }
 
+  // ========================================
+  // SKELETON DIAGNOSTICS
+  // ========================================
+
   function setupBones(model) {
-    // Luffy's actual bone names from scene.gltf
+    const allBones = [];
+
+    model.traverse((object) => {
+      if (object.isBone || object.type === 'Bone') {
+        allBones.push(object.name);
+      }
+    });
+
+    console.log('ALL LUFFY BONES:', allBones);
+    console.log('TOTAL BONES FOUND:', allBones.length);
+
     bones.leftThigh = saveBone(
-      findBone(model, /thigh\.L_/i)
+      findBone(model, /thigh.*L_/i)
     );
 
     bones.rightThigh = saveBone(
-      findBone(model, /thigh\.R_/i)
+      findBone(model, /thigh.*R_/i)
     );
 
     bones.leftKnee = saveBone(
-      findBone(model, /knee\.L_/i)
+      findBone(model, /knee.*L_/i)
     );
 
     bones.rightKnee = saveBone(
-      findBone(model, /knee\.R_/i)
+      findBone(model, /knee.*R_/i)
     );
 
     bones.leftShoulder = saveBone(
-      findBone(model, /shoulder 1\.L_/i)
+      findBone(model, /shoulder.*L_/i)
     );
 
     bones.rightShoulder = saveBone(
-      findBone(model, /shoulder 1\.R_/i)
+      findBone(model, /shoulder.*R_/i)
     );
 
     bones.leftElbow = saveBone(
-      findBone(model, /elbow\.L_/i)
+      findBone(model, /elbow.*L_/i)
     );
 
     bones.rightElbow = saveBone(
-      findBone(model, /elbow\.R_/i)
+      findBone(model, /elbow.*R_/i)
     );
 
     bones.spine = saveBone(
-      findBone(model, /spine upper_/i)
+      findBone(model, /spine.*upper/i)
     );
 
     console.log(
-      'Luffy skeleton bones:',
+      'DETECTED ANIMATION BONES:',
       Object.keys(bones).filter(key => bones[key])
     );
   }
+
+  // ========================================
+  // PROCEDURAL WALKING ANIMATION
+  // ========================================
 
   function animateSkeleton(time, state, speed, progress) {
     const moving = state === 'walk' || state === 'run';
@@ -250,7 +268,6 @@ function createLuffyMesh() {
     const amount = moving ? Math.sin(time * stride) : 0;
     const strength = moving ? (running ? 0.85 : 0.55) : 0;
 
-    // Legs move opposite each other
     rotateBone(
       bones.leftThigh,
       new THREE.Vector3(1, 0, 0),
@@ -263,7 +280,6 @@ function createLuffyMesh() {
       -amount * strength
     );
 
-    // Knees bend during the step
     const kneeBend = moving
       ? Math.max(0, Math.sin(time * stride + Math.PI / 2)) * 0.55
       : 0;
@@ -277,10 +293,11 @@ function createLuffyMesh() {
     rotateBone(
       bones.rightKnee,
       new THREE.Vector3(1, 0, 0),
-      Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
+      moving
+        ? Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
+        : 0
     );
 
-    // Arms swing opposite the legs
     rotateBone(
       bones.leftShoulder,
       new THREE.Vector3(0, 1, 0),
@@ -293,7 +310,6 @@ function createLuffyMesh() {
       amount * strength * 0.75
     );
 
-    // Slight elbow bend
     rotateBone(
       bones.leftElbow,
       new THREE.Vector3(1, 0, 0),
@@ -306,7 +322,6 @@ function createLuffyMesh() {
       moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0
     );
 
-    // Body movement
     rotateBone(
       bones.spine,
       new THREE.Vector3(1, 0, 0),
@@ -353,6 +368,10 @@ function createLuffyMesh() {
     }
   }
 
+  // ========================================
+  // ANIMATION UPDATE
+  // ========================================
+
   root.userData.animate = (
     time = 0,
     speed = 0,
@@ -375,6 +394,10 @@ function createLuffyMesh() {
 
     animateSkeleton(time, state, speed, progress);
   };
+
+  // ========================================
+  // LOAD LUFFY MODEL
+  // ========================================
 
   loader.load(
     './models/Luffy/scene.gltf',
@@ -410,8 +433,6 @@ function createLuffyMesh() {
 
       root.userData.loaded = true;
 
-      // Your model includes a blink animation.
-      // Keep it playing while the skeleton handles walking.
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(model);
 
