@@ -25,8 +25,8 @@ export class PlayerController {
     const forward = new THREE.Vector3(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y));
     const right = new THREE.Vector3(forward.z, 0, -forward.x);
     const direction = new THREE.Vector3();
-    if (keys['KeyW']) direction.addScaledVector(forward, -1);
-    if (keys['KeyS']) direction.add(forward);
+   if (keys['KeyW']) direction.add(forward);
+if (keys['KeyS']) direction.addScaledVector(forward, -1);
     if (keys['KeyA']) direction.add(right);
     if (keys['KeyD']) direction.addScaledVector(right, -1);
     if (direction.lengthSq() === 0) direction.copy(forward).negate();
@@ -73,8 +73,8 @@ export class PlayerController {
         this.staminaRegenDelay = Math.max(0, this.staminaRegenDelay - dt);
         if (this.staminaRegenDelay === 0) this.stamina = Math.min(this.maxStamina, this.stamina + 18 * dt);
       }
-      if (keys['KeyW']) this.mesh.position.addScaledVector(fwd, -speed * dt);
-      if (keys['KeyS']) this.mesh.position.addScaledVector(fwd, speed * 0.65 * dt);
+    if (keys['KeyW']) this.mesh.position.addScaledVector(fwd, speed * dt);
+if (keys['KeyS']) this.mesh.position.addScaledVector(fwd, -speed * 0.65 * dt);
     }
 
     // Camera automatically turns behind Luffy wherever he is pointing
