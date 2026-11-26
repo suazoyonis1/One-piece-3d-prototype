@@ -15,13 +15,11 @@ function addSphere(parent, color, position, scale) {
     new THREE.SphereGeometry(1, 16, 12),
     makeMaterial(color)
   );
-
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
-
   return mesh;
 }
 
@@ -30,12 +28,10 @@ function addBox(parent, color, position, scale) {
     new THREE.BoxGeometry(...scale),
     makeMaterial(color)
   );
-
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
-
   return mesh;
 }
 
@@ -45,7 +41,6 @@ function addBox(parent, color, position, scale) {
 
 function createProceduralCharacter(type = 'pirate') {
   const root = new THREE.Group();
-
   const colors = {
     luffy: [0xf1c27d, 0xdc2626, 0x1d4ed8, 0x171717],
     zoro: [0xf1c27d, 0xf8fafc, 0x14532d, 0x16a34a],
@@ -78,7 +73,6 @@ function createProceduralCharacter(type = 'pirate') {
       new THREE.CylinderGeometry(0.62, 0.62, 0.07, 24),
       makeMaterial(0xf4bd35)
     );
-
     brim.position.y = 2.82;
     body.add(brim);
 
@@ -86,7 +80,6 @@ function createProceduralCharacter(type = 'pirate') {
       new THREE.CylinderGeometry(0.3, 0.38, 0.28, 24),
       makeMaterial(0xf4bd35)
     );
-
     hat.position.y = 2.96;
     body.add(hat);
 
@@ -143,7 +136,6 @@ function createLuffyMesh() {
   const fallback = createProceduralCharacter('luffy');
 
   root.add(fallback);
-
   root.userData.loaded = false;
   root.userData.loadFailed = false;
 
@@ -261,7 +253,16 @@ function createLuffyMesh() {
     console.log('LUFFY ANIMATION BONES FOUND:', found);
     console.log('LUFFY ANIMATION BONE COUNT:', found.length);
 
-    // Report missing bones so they can be fixed later.
+    // FIND FOOT, ANKLE AND TOE BONES
+    model.traverse((object) => {
+      if (
+        object.isBone &&
+        /foot|ankle|toe/i.test(object.name)
+      ) {
+        console.log('LUFFY FOOT BONE:', object.name);
+      }
+    });
+
     for (const [name, bone] of Object.entries(bones)) {
       if (!bone) {
         console.warn('Missing Luffy bone:', name);
@@ -281,7 +282,6 @@ function createLuffyMesh() {
     const amount = moving ? Math.sin(time * stride) : 0;
     const strength = moving ? (running ? 0.85 : 0.55) : 0;
 
-    // Legs swing in opposite directions.
     rotateBone(
       bones.leftThigh,
       X_AXIS,
@@ -294,7 +294,6 @@ function createLuffyMesh() {
       -amount * strength
     );
 
-    // Knees bend during each step.
     const leftKneeBend = moving
       ? Math.max(0, Math.sin(time * stride + Math.PI / 2)) * 0.55
       : 0;
@@ -306,8 +305,6 @@ function createLuffyMesh() {
     rotateBone(bones.leftKnee, X_AXIS, leftKneeBend);
     rotateBone(bones.rightKnee, X_AXIS, rightKneeBend);
 
-    // Lower the arms from the original T-pose.
-    // The opposite signs account for the left and right arms.
     const armSwing = moving ? amount * strength * 0.35 : 0;
 
     rotateBoneMultiple(bones.leftShoulder, [
@@ -320,7 +317,6 @@ function createLuffyMesh() {
       { axis: X_AXIS, amount: -armSwing }
     ]);
 
-    // Slight elbow bend.
     rotateBone(
       bones.leftElbow,
       X_AXIS,
@@ -333,14 +329,12 @@ function createLuffyMesh() {
       moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0.12
     );
 
-    // Slight forward body lean while moving.
     rotateBone(
       bones.spine,
       X_AXIS,
       moving ? -0.06 : 0
     );
 
-    // Jump pose.
     if (state === 'jump') {
       rotateBone(bones.leftThigh, X_AXIS, -0.55);
       rotateBone(bones.rightThigh, X_AXIS, -0.55);
@@ -356,7 +350,6 @@ function createLuffyMesh() {
       ]);
     }
 
-    // Pistol attack.
     if (state === 'pistol') {
       const punch = Math.sin(
         Math.PI * Math.min(1, progress)
@@ -374,7 +367,6 @@ function createLuffyMesh() {
       );
     }
 
-    // Gatling attack.
     if (state === 'gatling') {
       const rapid = Math.sin(time * 35);
 
@@ -436,7 +428,6 @@ function createLuffyMesh() {
       const center = bounds.getCenter(new THREE.Vector3());
 
       const scale = 2.8 / (size.y || 1);
-
       model.scale.setScalar(scale);
 
       model.position.set(
@@ -503,7 +494,6 @@ export function createCharacterMesh(type = 'pirate') {
 
 export function createGoingMerryMesh() {
   const ship = new THREE.Group();
-
   const wood = makeMaterial(0x92400e);
   const deckMaterial = makeMaterial(0xd97706);
   const white = makeMaterial(0xf8fafc);
