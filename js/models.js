@@ -7,10 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // ========================================
 
 function makeMaterial(color, roughness = 0.75) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness
-  });
+  return new THREE.MeshStandardMaterial({ color, roughness });
 }
 
 function addSphere(parent, color, position, scale) {
@@ -138,7 +135,7 @@ function createProceduralCharacter(type = 'pirate') {
 }
 
 // ========================================
-// LUFFY SKELETON ANIMATION
+// LUFFY MODEL AND SKELETON
 // ========================================
 
 function createLuffyMesh() {
@@ -152,7 +149,6 @@ function createLuffyMesh() {
 
   const manager = new THREE.LoadingManager();
 
-  // Convert the model's texture folder paths.
   manager.setURLModifier((url) => {
     return url.replace(/\/textures\//g, '/texture/');
   });
@@ -162,6 +158,10 @@ function createLuffyMesh() {
   let mixer = null;
   let previousTime = null;
   let bones = {};
+
+  const X_AXIS = new THREE.Vector3(1, 0, 0);
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+  const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
   function findBone(model, pattern) {
     let found = null;
@@ -198,66 +198,79 @@ function createLuffyMesh() {
       .multiply(offset);
   }
 
-  // ========================================
-  // SKELETON DIAGNOSTICS
-  // ========================================
+  function rotateBoneMultiple(saved, rotations) {
+    if (!saved) return;
 
-  function setupBones(model) {
-    const allBones = [];
+    const result = saved.original.clone();
 
-    model.traverse((object) => {
-      if (object.isBone || object.type === 'Bone') {
-        allBones.push(object.name);
-      }
-    });
+    for (const rotation of rotations) {
+      const offset = new THREE.Quaternion()
+        .setFromAxisAngle(rotation.axis, rotation.amount);
 
-    console.log('ALL LUFFY BONES:', allBones);
-    console.log('TOTAL BONES FOUND:', allBones.length);
+      result.multiply(offset);
+    }
 
-    bones.leftThigh = saveBone(
-      findBone(model, /thigh.*L_/i)
-    );
-
-    bones.rightThigh = saveBone(
-      findBone(model, /thigh.*R_/i)
-    );
-
-    bones.leftKnee = saveBone(
-      findBone(model, /knee.*L_/i)
-    );
-
-    bones.rightKnee = saveBone(
-      findBone(model, /knee.*R_/i)
-    );
-
-    bones.leftShoulder = saveBone(
-      findBone(model, /shoulder.*L_/i)
-    );
-
-    bones.rightShoulder = saveBone(
-      findBone(model, /shoulder.*R_/i)
-    );
-
-    bones.leftElbow = saveBone(
-      findBone(model, /elbow.*L_/i)
-    );
-
-    bones.rightElbow = saveBone(
-      findBone(model, /elbow.*R_/i)
-    );
-
-    bones.spine = saveBone(
-      findBone(model, /spine.*upper/i)
-    );
-
-    console.log(
-      'DETECTED ANIMATION BONES:',
-      Object.keys(bones).filter(key => bones[key])
-    );
+    saved.bone.quaternion.copy(result);
   }
 
   // ========================================
-  // PROCEDURAL WALKING ANIMATION
+  // FIND THE ACTUAL LUFFY BONES
+  // ========================================
+
+  function setupBones(model) {
+    bones.leftThigh = saveBone(
+      findBone(model, /thighL_/i)
+    );
+
+    bones.rightThigh = saveBone(
+      findBone(model, /thighR_/i)
+    );
+
+    bones.leftKnee = saveBone(
+      findBone(model, /kneeL_/i)
+    );
+
+    bones.rightKnee = saveBone(
+      findBone(model, /kneeR_/i)
+    );
+
+    bones.leftShoulder = saveBone(
+      findBone(model, /shoulder_1L_/i)
+    );
+
+    bones.rightShoulder = saveBone(
+      findBone(model, /shoulder_1R_/i)
+    );
+
+    bones.leftElbow = saveBone(
+      findBone(model, /elbowL_/i)
+    );
+
+    bones.rightElbow = saveBone(
+      findBone(model, /elbowR_/i)
+    );
+
+    bones.spine = saveBone(
+      findBone(model, /spine_upper_/i)
+    );
+
+    const found = Object.keys(bones).filter(
+      key => bones[key] !== null
+    );
+
+    console.log('LUFFY ANIMATION BONES FOUND:', found);
+    console.log('LUFFY ANIMATION BONE COUNT:', found.length);
+
+    // Report missing bones so they can be fixed later.
+    for (const [name, bone] of Object.entries(bones)) {
+      if (!bone) {
+        console.warn('Missing Luffy bone:', name);
+      }
+    }
+  }
+
+  // ========================================
+  // WALKING AND RUNNING ANIMATION
   // ========================================
 
   function animateSkeleton(time, state, speed, progress) {
@@ -268,103 +281,112 @@ function createLuffyMesh() {
     const amount = moving ? Math.sin(time * stride) : 0;
     const strength = moving ? (running ? 0.85 : 0.55) : 0;
 
+    // Legs swing in opposite directions.
     rotateBone(
       bones.leftThigh,
-      new THREE.Vector3(1, 0, 0),
+      X_AXIS,
       amount * strength
     );
 
     rotateBone(
       bones.rightThigh,
-      new THREE.Vector3(1, 0, 0),
+      X_AXIS,
       -amount * strength
     );
 
-    const kneeBend = moving
+    // Knees bend during each step.
+    const leftKneeBend = moving
       ? Math.max(0, Math.sin(time * stride + Math.PI / 2)) * 0.55
       : 0;
 
-    rotateBone(
-      bones.leftKnee,
-      new THREE.Vector3(1, 0, 0),
-      kneeBend
-    );
+    const rightKneeBend = moving
+      ? Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
+      : 0;
 
-    rotateBone(
-      bones.rightKnee,
-      new THREE.Vector3(1, 0, 0),
-      moving
-        ? Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
-        : 0
-    );
+    rotateBone(bones.leftKnee, X_AXIS, leftKneeBend);
+    rotateBone(bones.rightKnee, X_AXIS, rightKneeBend);
 
-    rotateBone(
-      bones.leftShoulder,
-      new THREE.Vector3(0, 1, 0),
-      -amount * strength * 0.75
-    );
+    // Lower the arms from the original T-pose.
+    // The opposite signs account for the left and right arms.
+    const armSwing = moving ? amount * strength * 0.35 : 0;
 
-    rotateBone(
-      bones.rightShoulder,
-      new THREE.Vector3(0, 1, 0),
-      amount * strength * 0.75
-    );
+    rotateBoneMultiple(bones.leftShoulder, [
+      { axis: Z_AXIS, amount: 1.15 },
+      { axis: X_AXIS, amount: armSwing }
+    ]);
 
+    rotateBoneMultiple(bones.rightShoulder, [
+      { axis: Z_AXIS, amount: -1.15 },
+      { axis: X_AXIS, amount: -armSwing }
+    ]);
+
+    // Slight elbow bend.
     rotateBone(
       bones.leftElbow,
-      new THREE.Vector3(1, 0, 0),
-      moving ? 0.25 + Math.max(0, amount) * 0.2 : 0
+      X_AXIS,
+      moving ? 0.25 + Math.max(0, amount) * 0.2 : 0.12
     );
 
     rotateBone(
       bones.rightElbow,
-      new THREE.Vector3(1, 0, 0),
-      moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0
+      X_AXIS,
+      moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0.12
     );
 
+    // Slight forward body lean while moving.
     rotateBone(
       bones.spine,
-      new THREE.Vector3(1, 0, 0),
+      X_AXIS,
       moving ? -0.06 : 0
     );
 
+    // Jump pose.
     if (state === 'jump') {
-      rotateBone(bones.leftThigh, new THREE.Vector3(1, 0, 0), -0.55);
-      rotateBone(bones.rightThigh, new THREE.Vector3(1, 0, 0), -0.55);
-      rotateBone(bones.leftShoulder, new THREE.Vector3(0, 1, 0), -0.65);
-      rotateBone(bones.rightShoulder, new THREE.Vector3(0, 1, 0), 0.65);
+      rotateBone(bones.leftThigh, X_AXIS, -0.55);
+      rotateBone(bones.rightThigh, X_AXIS, -0.55);
+
+      rotateBoneMultiple(bones.leftShoulder, [
+        { axis: Z_AXIS, amount: 0.45 },
+        { axis: X_AXIS, amount: -0.5 }
+      ]);
+
+      rotateBoneMultiple(bones.rightShoulder, [
+        { axis: Z_AXIS, amount: -0.45 },
+        { axis: X_AXIS, amount: 0.5 }
+      ]);
     }
 
+    // Pistol attack.
     if (state === 'pistol') {
-      const punch = Math.sin(Math.PI * Math.min(1, progress));
-
-      rotateBone(
-        bones.rightShoulder,
-        new THREE.Vector3(0, 1, 0),
-        1.1 * punch
+      const punch = Math.sin(
+        Math.PI * Math.min(1, progress)
       );
+
+      rotateBoneMultiple(bones.rightShoulder, [
+        { axis: Z_AXIS, amount: -0.5 },
+        { axis: X_AXIS, amount: 1.1 * punch }
+      ]);
 
       rotateBone(
         bones.rightElbow,
-        new THREE.Vector3(1, 0, 0),
+        X_AXIS,
         -0.3 * punch
       );
     }
 
+    // Gatling attack.
     if (state === 'gatling') {
       const rapid = Math.sin(time * 35);
 
-      rotateBone(
-        bones.leftShoulder,
-        new THREE.Vector3(0, 1, 0),
-        rapid * 0.8
-      );
+      rotateBoneMultiple(bones.leftShoulder, [
+        { axis: Z_AXIS, amount: 0.7 },
+        { axis: X_AXIS, amount: rapid * 0.8 }
+      ]);
 
-      rotateBone(
-        bones.rightShoulder,
-        new THREE.Vector3(0, 1, 0),
-        -rapid * 0.8
-      );
+      rotateBoneMultiple(bones.rightShoulder, [
+        { axis: Z_AXIS, amount: -0.7 },
+        { axis: X_AXIS, amount: -rapid * 0.8 }
+      ]);
     }
   }
 
@@ -386,7 +408,11 @@ function createLuffyMesh() {
     if (mixer) {
       const delta = previousTime === null
         ? 0
-        : THREE.MathUtils.clamp(time - previousTime, 0, 0.05);
+        : THREE.MathUtils.clamp(
+            time - previousTime,
+            0,
+            0.05
+          );
 
       mixer.update(delta);
       previousTime = time;
@@ -396,7 +422,7 @@ function createLuffyMesh() {
   };
 
   // ========================================
-  // LOAD LUFFY MODEL
+  // LOAD MODEL
   // ========================================
 
   loader.load(
