@@ -1,6 +1,60 @@
 
 import * as THREE from 'three';
 
+// Generate detailed textures without needing external image files
+function createGroundTexture(baseColor, detailColors, repeat = 8) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = baseColor;
+  ctx.fillRect(0, 0, 512, 512);
+
+  for (let i = 0; i < 18000; i++) {
+    ctx.fillStyle = detailColors[
+      Math.floor(Math.random() * detailColors.length)
+    ];
+
+    ctx.globalAlpha = Math.random() * 0.45;
+    ctx.fillRect(
+      Math.random() * 512,
+      Math.random() * 512,
+      Math.random() * 3 + 1,
+      Math.random() * 3 + 1
+    );
+  }
+
+  ctx.globalAlpha = 1;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat, repeat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+
+  return texture;
+}
+
+const grassTexture = createGroundTexture(
+  '#4b963e',
+  ['#387c32', '#6cae45', '#83b956', '#315f2d'],
+  7
+);
+
+const sandTexture = createGroundTexture(
+  '#d9bd82',
+  ['#c9a96d', '#ead49c', '#f0dfb5', '#b99760'],
+  6
+);
+
+const woodTexture = createGroundTexture(
+  '#98613b',
+  ['#744326', '#b47b4b', '#c18b58', '#81502e'],
+  3
+);
+
 export class World {
   constructor(scene) {
     this.scene = scene;
@@ -10,35 +64,62 @@ export class World {
     this.clouds = [];
 
     // Sky and atmosphere
-    this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog = new THREE.FogExp2(0x9bd8e8, 0.00085);
+    this.scene.background = new THREE.Color(0x8bc9e8);
+    this.scene.fog = new THREE.FogExp2(0x9bc9d8, 0.00065);
 
-    // Lighting
-    this.scene.add(
-      new THREE.HemisphereLight(0xdaf3ff, 0x557344, 1.5)
+    // Natural ambient lighting
+    const ambient = new THREE.HemisphereLight(
+      0xc7eaff,
+      0x526b3b,
+      1.8
     );
+    this.scene.add(ambient);
 
-    const sun = new THREE.DirectionalLight(0xfff1cc, 2.0);
-    sun.position.set(120, 220, 100);
+    // Sunlight and shadows
+    const sun = new THREE.DirectionalLight(0xffe6b5, 3);
+
+    sun.position.set(120, 180, 100);
     sun.castShadow = true;
+
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -350;
+    sun.shadow.camera.right = 350;
+    sun.shadow.camera.top = 350;
+    sun.shadow.camera.bottom = -350;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 500;
+
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.03;
+
     this.scene.add(sun);
 
     // Animated ocean
-    const wGeo = new THREE.PlaneGeometry(2400, 2400, 80, 80);
+    const wGeo = new THREE.PlaneGeometry(
+      2400,
+      2400,
+      80,
+      80
+    );
+
     wGeo.rotateX(-Math.PI / 2);
 
     this.waterPositions = wGeo.attributes.position.array.slice();
 
     this.oceanMesh = new THREE.Mesh(
       wGeo,
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshPhysicalMaterial({
         color: 0x087eaa,
-        roughness: 0.28,
-        metalness: 0.12,
+        roughness: 0.2,
+        metalness: 0.05,
+        clearcoat: 1,
+        clearcoatRoughness: 0.15,
+        reflectivity: 0.7,
         flatShading: false
       })
     );
 
+    this.oceanMesh.receiveShadow = true;
     this.scene.add(this.oceanMesh);
 
     // Islands
@@ -50,7 +131,9 @@ export class World {
       0x45a94b,
       2.3
     );
-this.createFooshaVillage();
+
+    this.createFooshaVillage();
+
     this.addIsland(
       'shells',
       'Shells Town (Marine Base)',
@@ -78,12 +161,16 @@ this.createFooshaVillage();
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(1.8, 1.8, 1.8),
         new THREE.MeshStandardMaterial({
-          color: 0xd97706,
+          map: woodTexture,
+          color: 0xffffff,
           roughness: 0.85
         })
       );
 
       crate.position.copy(p);
+      crate.castShadow = true;
+      crate.receiveShadow = true;
+
       crate.userData = {
         id: idx,
         collected: false
@@ -97,9 +184,14 @@ this.createFooshaVillage();
   }
 
   addIsland(id, name, center, radius, color, groundY) {
+    const texture = id === 'shells'
+      ? sandTexture
+      : grassTexture;
+
     const material = new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.9
+      map: texture,
+      color: 0xffffff,
+      roughness: 0.95
     });
 
     const island = new THREE.Mesh(
@@ -107,7 +199,7 @@ this.createFooshaVillage();
         radius,
         radius + 5,
         groundY * 2,
-        48
+        64
       ),
       material
     );
@@ -143,21 +235,24 @@ this.createFooshaVillage();
       const tree = new THREE.Group();
 
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.32, 6, 7),
+        new THREE.CylinderGeometry(0.18, 0.32, 6, 9),
         new THREE.MeshStandardMaterial({
-          color: 0x79502b
+          color: 0x79502b,
+          roughness: 0.95
         })
       );
 
       trunk.position.y = 3;
+      trunk.castShadow = true;
       tree.add(trunk);
 
       // Palm leaves
       for (let j = 0; j < 7; j++) {
         const leaf = new THREE.Mesh(
-          new THREE.ConeGeometry(0.45, 5, 5),
+          new THREE.ConeGeometry(0.45, 5, 7),
           new THREE.MeshStandardMaterial({
-            color: j % 2 === 0 ? 0x16803a : 0x249b4b
+            color: j % 2 === 0 ? 0x16803a : 0x249b4b,
+            roughness: 0.85
           })
         );
 
@@ -208,6 +303,9 @@ this.createFooshaVillage();
         Math.random()
       );
 
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+
       this.scene.add(rock);
     }
 
@@ -217,7 +315,7 @@ this.createFooshaVillage();
       const distance = Math.random() * radius * 0.7;
 
       const bush = new THREE.Mesh(
-        new THREE.SphereGeometry(1.1, 7, 6),
+        new THREE.SphereGeometry(1.1, 10, 8),
         new THREE.MeshStandardMaterial({
           color: 0x238b45,
           roughness: 1
@@ -231,30 +329,35 @@ this.createFooshaVillage();
       );
 
       bush.scale.set(1.2, 0.7, 1);
+      bush.castShadow = true;
+
       this.scene.add(bush);
     }
   }
 
   createFooshaVillage() {
-    const center = new THREE.Vector3(0, 0, 0);
     const groundY = 2.3;
 
-    // Sandy beach around Foosha
+    // Sandy beach
     const beach = new THREE.Mesh(
       new THREE.TorusGeometry(45, 2.2, 8, 80),
       new THREE.MeshStandardMaterial({
-        color: 0xe8cf91,
+        map: sandTexture,
+        color: 0xffffff,
         roughness: 1
       })
     );
 
     beach.rotation.x = -Math.PI / 2;
     beach.position.y = groundY + 0.08;
+    beach.receiveShadow = true;
+
     this.scene.add(beach);
 
     // Village walking path
     const pathMaterial = new THREE.MeshStandardMaterial({
-      color: 0xc5a16b,
+      map: sandTexture,
+      color: 0xffffff,
       roughness: 1
     });
 
@@ -270,6 +373,7 @@ this.createFooshaVillage();
         9 - i * 4
       );
 
+      path.receiveShadow = true;
       this.scene.add(path);
     }
 
@@ -282,10 +386,7 @@ this.createFooshaVillage();
     // Central tavern
     this.createVillageHouse(0, -25, 0, true, true);
 
-    // Wooden dock
     this.createVillageDock();
-
-    // Barrels and crates around village
     this.createVillageProps();
   }
 
@@ -297,8 +398,9 @@ this.createFooshaVillage();
     const depth = large ? 9 : 6;
 
     const wood = new THREE.MeshStandardMaterial({
-      color: tavern ? 0x9b5930 : 0xc18a52,
-      roughness: 0.9
+      map: woodTexture,
+      color: tavern ? 0xb87948 : 0xd5a16b,
+      roughness: 0.85
     });
 
     const roofMaterial = new THREE.MeshStandardMaterial({
@@ -313,8 +415,6 @@ this.createFooshaVillage();
     );
 
     body.position.y = height / 2;
-    body.castShadow = true;
-    body.receiveShadow = true;
     group.add(body);
 
     // Roof
@@ -325,7 +425,6 @@ this.createFooshaVillage();
 
     roof.position.y = height + 1.5;
     roof.rotation.y = Math.PI / 4;
-    roof.castShadow = true;
     group.add(roof);
 
     // Door
@@ -342,7 +441,8 @@ this.createFooshaVillage();
     // Windows
     const windowMaterial = new THREE.MeshStandardMaterial({
       color: 0x75c9e8,
-      roughness: 0.3
+      roughness: 0.3,
+      metalness: 0.1
     });
 
     [-width / 3, width / 3].forEach(wx => {
@@ -385,7 +485,8 @@ this.createFooshaVillage();
     const dock = new THREE.Group();
 
     const wood = new THREE.MeshStandardMaterial({
-      color: 0x80502e,
+      map: woodTexture,
+      color: 0xffffff,
       roughness: 0.9
     });
 
@@ -402,9 +503,7 @@ this.createFooshaVillage();
     for (let i = 0; i < 12; i++) {
       const plank = new THREE.Mesh(
         new THREE.BoxGeometry(9.2, 0.15, 1.7),
-        new THREE.MeshStandardMaterial({
-          color: i % 2 === 0 ? 0xa66b3f : 0x80502e
-        })
+        wood
       );
 
       plank.position.set(0, 0.32, -11 + i * 2);
@@ -424,17 +523,27 @@ this.createFooshaVillage();
       }
     }
 
+    dock.traverse(obj => {
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+
     dock.position.set(5, 2.5, -38);
     this.scene.add(dock);
   }
 
   createVillageProps() {
     const barrelMaterial = new THREE.MeshStandardMaterial({
-      color: 0x98602f
+      color: 0x98602f,
+      roughness: 0.9
     });
 
     const crateMaterial = new THREE.MeshStandardMaterial({
-      color: 0xb8793f
+      map: woodTexture,
+      color: 0xffffff,
+      roughness: 0.9
     });
 
     const positions = [
@@ -453,6 +562,7 @@ this.createFooshaVillage();
       );
 
       barrel.position.set(p[0], 3.05, p[1]);
+      barrel.castShadow = true;
       this.scene.add(barrel);
 
       if (i % 2 === 0) {
@@ -462,6 +572,7 @@ this.createFooshaVillage();
         );
 
         crate.position.set(p[0] + 2, 3.05, p[1]);
+        crate.castShadow = true;
         this.scene.add(crate);
       }
     });
@@ -480,8 +591,8 @@ this.createFooshaVillage();
         const puff = new THREE.Mesh(
           new THREE.SphereGeometry(
             3 + Math.random() * 2,
-            8,
-            8
+            12,
+            10
           ),
           material
         );
