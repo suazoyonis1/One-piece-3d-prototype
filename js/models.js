@@ -120,7 +120,7 @@ function createProceduralCharacter(type = 'pirate') {
 
   root.userData.animate = (time = 0, speed = 0, state = 'idle') => {
     const moving = state === 'walk' || state === 'run';
-    const swing = moving ? Math.sin(time * 10) * speed : 0;
+    const swing = moving ? Math.sin(time * 8) * speed : 0;
 
     legs[0].rotation.x = swing;
     legs[1].rotation.x = -swing;
@@ -160,16 +160,12 @@ function createLuffyMesh() {
   const bones = {};
 
   const X_AXIS = new THREE.Vector3(1, 0, 0);
-  const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
   function findBone(model, pattern) {
     let found = null;
 
     model.traverse((object) => {
-      if (
-        object.isBone &&
-        pattern.test(object.name)
-      ) {
+      if (object.isBone && pattern.test(object.name)) {
         found = object;
       }
     });
@@ -197,23 +193,8 @@ function createLuffyMesh() {
       .multiply(offset);
   }
 
-  function rotateBoneMultiple(saved, rotations) {
-    if (!saved) return;
-
-    const result = saved.original.clone();
-
-    for (const rotation of rotations) {
-      const offset = new THREE.Quaternion()
-        .setFromAxisAngle(rotation.axis, rotation.amount);
-
-      result.multiply(offset);
-    }
-
-    saved.bone.quaternion.copy(result);
-  }
-
   // ========================================
-  // FIND ALL ANIMATION BONES
+  // FIND ANIMATION BONES
   // ========================================
 
   function setupBones(model) {
@@ -252,7 +233,7 @@ function createLuffyMesh() {
   }
 
   // ========================================
-  // WALKING ANIMATION
+  // WALKING AND ACTION ANIMATION
   // ========================================
 
   function animateSkeleton(time, state, speed, progress) {
@@ -265,47 +246,48 @@ function createLuffyMesh() {
     const leftPhase = Math.sin(phase);
     const rightPhase = Math.sin(phase + Math.PI);
 
-    const legStrength = running ? 0.85 : 0.7;
+    const strength = moving
+      ? (running ? 0.85 : 0.7)
+      : 0;
 
-    // Thigh movement
+    // Thighs stop moving completely when idle.
     rotateBone(
       bones.leftThigh,
       X_AXIS,
-      leftPhase * legStrength
+      leftPhase * strength
     );
 
     rotateBone(
       bones.rightThigh,
       X_AXIS,
-      rightPhase * legStrength
+      rightPhase * strength
     );
 
-    // Bend knees as each foot comes forward
-    const leftKneeBend = moving
+    // Knee bends.
+    const leftKnee = moving
       ? Math.max(0, Math.cos(phase)) * (running ? 0.95 : 0.8)
       : 0;
 
-    const rightKneeBend = moving
+    const rightKnee = moving
       ? Math.max(0, Math.cos(phase + Math.PI)) * (running ? 0.95 : 0.8)
       : 0;
 
-    rotateBone(bones.leftKnee, X_AXIS, leftKneeBend);
-    rotateBone(bones.rightKnee, X_AXIS, rightKneeBend);
+    rotateBone(bones.leftKnee, X_AXIS, leftKnee);
+    rotateBone(bones.rightKnee, X_AXIS, rightKnee);
 
-    // Ankles help keep the feet from pointing awkwardly
+    // Ankles and toes.
     rotateBone(
       bones.leftAnkle,
       X_AXIS,
-      moving ? -leftKneeBend * 0.35 : 0
+      -leftKnee * 0.35
     );
 
     rotateBone(
       bones.rightAnkle,
       X_AXIS,
-      moving ? -rightKneeBend * 0.35 : 0
+      -rightKnee * 0.35
     );
 
-    // Small toe movement
     rotateBone(
       bones.leftToe,
       X_AXIS,
@@ -318,30 +300,31 @@ function createLuffyMesh() {
       moving ? Math.max(0, rightPhase) * 0.12 : 0
     );
 
-    // Arms swing opposite to the legs
+    // Arms return to their original pose when idle.
     const armSwing = moving ? leftPhase * 0.22 : 0;
 
-    // Reversed shoulder directions and smaller angles
-    rotateBoneMultiple(bones.leftShoulder, [
-      { axis: Z_AXIS, amount: -0.65 },
-      { axis: X_AXIS, amount: armSwing }
-    ]);
+    rotateBone(
+      bones.leftShoulder,
+      X_AXIS,
+      armSwing
+    );
 
-    rotateBoneMultiple(bones.rightShoulder, [
-      { axis: Z_AXIS, amount: 0.65 },
-      { axis: X_AXIS, amount: -armSwing }
-    ]);
+    rotateBone(
+      bones.rightShoulder,
+      X_AXIS,
+      -armSwing
+    );
 
     rotateBone(
       bones.leftElbow,
       X_AXIS,
-      moving ? 0.12 + Math.max(0, leftPhase) * 0.12 : 0.08
+      moving ? 0.12 : 0
     );
 
     rotateBone(
       bones.rightElbow,
       X_AXIS,
-      moving ? 0.12 + Math.max(0, rightPhase) * 0.12 : 0.08
+      moving ? 0.12 : 0
     );
 
     rotateBone(
@@ -350,35 +333,26 @@ function createLuffyMesh() {
       moving ? -0.04 : 0
     );
 
-    // Jump pose
+    // Jump pose.
     if (state === 'jump') {
       rotateBone(bones.leftThigh, X_AXIS, -0.5);
       rotateBone(bones.rightThigh, X_AXIS, -0.5);
 
       rotateBone(bones.leftKnee, X_AXIS, 0.7);
       rotateBone(bones.rightKnee, X_AXIS, 0.7);
-
-      rotateBoneMultiple(bones.leftShoulder, [
-        { axis: Z_AXIS, amount: -0.5 },
-        { axis: X_AXIS, amount: -0.5 }
-      ]);
-
-      rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: 0.5 },
-        { axis: X_AXIS, amount: 0.5 }
-      ]);
     }
 
-    // Pistol pose
+    // Pistol pose.
     if (state === 'pistol') {
       const punch = Math.sin(
         Math.PI * Math.min(1, progress)
       );
 
-      rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: 0.5 },
-        { axis: X_AXIS, amount: 0.9 * punch }
-      ]);
+      rotateBone(
+        bones.rightShoulder,
+        X_AXIS,
+        0.9 * punch
+      );
 
       rotateBone(
         bones.rightElbow,
@@ -387,19 +361,21 @@ function createLuffyMesh() {
       );
     }
 
-    // Gatling pose
+    // Gatling pose.
     if (state === 'gatling') {
       const rapid = Math.sin(time * 35);
 
-      rotateBoneMultiple(bones.leftShoulder, [
-        { axis: Z_AXIS, amount: -0.5 },
-        { axis: X_AXIS, amount: rapid * 0.6 }
-      ]);
+      rotateBone(
+        bones.leftShoulder,
+        X_AXIS,
+        rapid * 0.6
+      );
 
-      rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: 0.5 },
-        { axis: X_AXIS, amount: -rapid * 0.6 }
-      ]);
+      rotateBone(
+        bones.rightShoulder,
+        X_AXIS,
+        -rapid * 0.6
+      );
     }
   }
 
