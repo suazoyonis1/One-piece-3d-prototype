@@ -13,7 +13,6 @@ function attachCustomGLTF(root, path, h) {
   });
 }
 
-import { GLTFLoader } from './GLTFLoader.js';
 const gltfLoader = new GLTFLoader();
 function attachCustomGLTF(root, path, targetHeight) {
   gltfLoader.load(path, (gltf) => {
@@ -29,7 +28,6 @@ function attachCustomGLTF(root, path, targetHeight) {
   });
 }
 
-import { GLTFLoader } from './GLTFLoader.js';
 const gltfLoader = new GLTFLoader();
 function attachCustomGLB(root, path, targetHeight) {
   gltfLoader.load(path, (gltf) => {
