@@ -63,7 +63,7 @@ class OnePieceGame {
   }
   animate() {
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    requestAnimationFrame(() => this.animate()); const dt = Math.min(this.clock.getDelta(), 0.05);
+    requestAnimationFrame(() => this.animate()); 
     this.world.update(dt); this.ship.update(dt,this.keys,this.world);
     this.player.update(dt,this.keys,this.world,this.isSailing,this.ship);
     if (!this.isSailing && !this.dlg) this.enemies.forEach(e => e.update(dt,this.player));
