@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>One Piece: Dawn Island — Chapter 1</title>
+
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="./css/style.css" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./js/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud-top-left">
+    <div class="stat-panel">
+      <div class="char-header">
+        <span class="badge">CAPTAIN</span>
+        <h2>Monkey D. Luffy</h2>
+      </div>
+
+      <div class="bar-group">
+        <label>HP <span id="hp-text">100 / 100</span></label>
+        <div class="bar-bg">
+          <div id="hp-bar" class="bar-fill hp"></div>
+        </div>
+      </div>
+
+      <div class="bar-group">
+        <label>STAMINA <span id="stamina-text">100 / 100</span></label>
+        <div class="bar-bg">
+          <div id="stamina-bar" class="bar-fill stamina"></div>
+        </div>
+      </div>
+
+      <div class="berries-row">
+        <span>Berries:</span>
+        <strong id="berries-text">B 500</strong>
+      </div>
+
+      <div class="crew-row">
+        <span>Crew:</span>
+        <strong id="crew-text">Luffy</strong>
+      </div>
+    </div>
+
+    <div id="abilities-panel">
+      <div class="ability-slot dodge-slot">
+        <span class="key">C</span>
+        <span class="name">Dodge Roll</span>
+        <div class="cooldown-overlay" id="cd-c"></div>
+      </div>
+
+      <div class="ability-slot">
+        <span class="key">Q</span>
+        <span class="name">Gomu Pistol</span>
+        <div class="cooldown-overlay" id="cd-q"></div>
+      </div>
+
+      <div class="ability-slot">
+        <span class="key">E</span>
+        <span class="name">Gomu Gatling</span>
+        <div class="cooldown-overlay" id="cd-e"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud-top-right">
+    <div id="minimap-container">
+      <canvas id="minimap-canvas" width="160" height="160"></canvas>
+      <div id="island-label">DAWN ISLAND</div>
+    </div>
+
+    <div id="quest-panel">
+      <div class="quest-tag">DAWN ISLAND STORY</div>
+      <h3 id="quest-title">Loading...</h3>
+      <p id="quest-objective">...</p>
+      <div id="quest-distance">Waypoint: -- m</div>
+    </div>
+  </div>
+
+  <div id="interact-prompt" class="hidden">
+    Press <span>[F]</span> to Interact
+  </div>
+
+  <div id="banner-alert" class="hidden"></div>
+
+  <div id="dialogue-box" class="hidden">
+    <div class="dialogue-header">
+      <h3 id="dialogue-speaker">Speaker</h3>
+      <span id="dialogue-role">Role</span>
+    </div>
+
+    <p id="dialogue-text">...</p>
+
+    <div class="dialogue-footer">
+      Press <span>[F]</span> or <span>[Space]</span> to continue
+    </div>
+  </div>
+
+  <div id="controls-bar">
+    <span><b>WASD</b> Move / Steer</span>
+    <span><b>Shift</b> Sprint</span>
+    <span><b>C</b> Dodge</span>
+    <span><b>Space</b> Jump</span>
+    <span><b>Click</b> Punch</span>
+    <span><b>Q</b> Pistol</span>
+    <span><b>E</b> Gatling</span>
+    <span><b>F</b> Interact / Board</span>
+  </div>
+
+  <script type="module" src="./js/main.js?v=6"></script>
+</body>
+</html>
