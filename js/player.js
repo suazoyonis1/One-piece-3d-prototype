@@ -29,12 +29,19 @@ export class PlayerController {
     this.staminaRegenDelay = 0;
 
     this.dodgeTimer = 0;
+    this.dodgeDuration = 0.42;
     this.cdDodge = 0;
     this.dodgeDirection = new THREE.Vector3();
 
     this.animationTime = 0;
     this.animationSpeed = 0;
     this.animationState = 'idle';
+
+    this.pistolAnimTimer = 0;
+    this.pistolAnimDuration = 0.42;
+
+    this.gatlingAnimTimer = 0;
+    this.gatlingAnimDuration = 0.75;
   }
 
   healFull() {
@@ -66,10 +73,7 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (
-        !e.dead &&
-        e.mesh.position.distanceTo(this.mesh.position) < 4
-      ) {
+      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 4) {
         e.takeDamage(22, fwd);
       }
     });
@@ -84,37 +88,20 @@ export class PlayerController {
       Math.cos(this.mesh.rotation.y)
     );
 
-    const right = new THREE.Vector3(
-      forward.z,
-      0,
-      -forward.x
-    );
-
+    const right = new THREE.Vector3(forward.z, 0, -forward.x);
     const direction = new THREE.Vector3();
 
-    if (keys['KeyW'] || keys['ArrowUp']) {
-      direction.add(forward);
-    }
-
-    if (keys['KeyS'] || keys['ArrowDown']) {
-      direction.addScaledVector(forward, -1);
-    }
-
-    if (keys['KeyA'] || keys['ArrowLeft']) {
-      direction.add(right);
-    }
-
-    if (keys['KeyD'] || keys['ArrowRight']) {
-      direction.addScaledVector(right, -1);
-    }
+    if (keys['KeyW'] || keys['ArrowUp']) direction.add(forward);
+    if (keys['KeyS'] || keys['ArrowDown']) direction.addScaledVector(forward, -1);
+    if (keys['KeyA'] || keys['ArrowLeft']) direction.add(right);
+    if (keys['KeyD'] || keys['ArrowRight']) direction.addScaledVector(right, -1);
 
     if (direction.lengthSq() === 0) {
       direction.copy(forward).negate();
     }
 
     this.dodgeDirection.copy(direction.normalize());
-
-    this.dodgeTimer = 0.24;
+    this.dodgeTimer = this.dodgeDuration;
     this.cdDodge = 1.15;
 
     this.stamina = Math.max(0, this.stamina - 22);
@@ -128,6 +115,9 @@ export class PlayerController {
     this.staminaRegenDelay = 0.8;
     this.cdPistol = 2.5;
 
+    this.pistolAnimTimer = this.pistolAnimDuration;
+    this.gatlingAnimTimer = 0;
+
     const fwd = new THREE.Vector3(
       Math.sin(this.mesh.rotation.y),
       0,
@@ -135,10 +125,7 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (
-        !e.dead &&
-        e.mesh.position.distanceTo(this.mesh.position) < 18
-      ) {
+      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 18) {
         e.takeDamage(45, fwd);
       }
     });
@@ -151,6 +138,9 @@ export class PlayerController {
     this.staminaRegenDelay = 0.8;
     this.cdGatling = 5.0;
 
+    this.gatlingAnimTimer = this.gatlingAnimDuration;
+    this.pistolAnimTimer = 0;
+
     const fwd = new THREE.Vector3(
       Math.sin(this.mesh.rotation.y),
       0,
@@ -158,10 +148,7 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (
-        !e.dead &&
-        e.mesh.position.distanceTo(this.mesh.position) < 14
-      ) {
+      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 14) {
         e.takeDamage(70, fwd);
       }
     });
@@ -175,6 +162,9 @@ export class PlayerController {
     this.cdDodge = Math.max(0, this.cdDodge - dt);
     this.dodgeTimer = Math.max(0, this.dodgeTimer - dt);
     this.attackTimer = Math.max(0, this.attackTimer - dt);
+
+    this.pistolAnimTimer = Math.max(0, this.pistolAnimTimer - dt);
+    this.gatlingAnimTimer = Math.max(0, this.gatlingAnimTimer - dt);
 
     if (isSailing) {
       this.mesh.position.copy(ship.mesh.position).add(
@@ -204,13 +194,10 @@ export class PlayerController {
     const moving = movingForward || movingBackward;
 
     if (this.dodgeTimer > 0) {
-      this.mesh.position.addScaledVector(
-        this.dodgeDirection,
-        34 * dt
-      );
+      this.mesh.position.addScaledVector(this.dodgeDirection, 18 * dt);
 
       this.animationState = 'dodge';
-      this.animationSpeed = 1;
+      this.animationSpeed = 0;
     } else {
       if (keys['KeyA'] || keys['ArrowLeft']) {
         this.mesh.rotation.y += turnSpeed * dt;
@@ -234,17 +221,10 @@ export class PlayerController {
       const speed = sprinting ? 24 : 14;
 
       if (sprinting) {
-        this.stamina = Math.max(
-          0,
-          this.stamina - 24 * dt
-        );
-
+        this.stamina = Math.max(0, this.stamina - 24 * dt);
         this.staminaRegenDelay = 0.8;
       } else {
-        this.staminaRegenDelay = Math.max(
-          0,
-          this.staminaRegenDelay - dt
-        );
+        this.staminaRegenDelay = Math.max(0, this.staminaRegenDelay - dt);
 
         if (this.staminaRegenDelay === 0) {
           this.stamina = Math.min(
@@ -255,17 +235,11 @@ export class PlayerController {
       }
 
       if (movingForward) {
-        this.mesh.position.addScaledVector(
-          fwd,
-          speed * dt
-        );
+        this.mesh.position.addScaledVector(fwd, speed * dt);
       }
 
       if (movingBackward) {
-        this.mesh.position.addScaledVector(
-          fwd,
-          -speed * 0.65 * dt
-        );
+        this.mesh.position.addScaledVector(fwd, -speed * 0.65 * dt);
       }
 
       if (moving) {
@@ -301,9 +275,14 @@ export class PlayerController {
       this.isGrounded = true;
     }
 
-    if (!this.isGrounded) {
+    if (this.dodgeTimer > 0) {
+      this.animationState = 'dodge';
+    } else if (!this.isGrounded) {
       this.animationState = 'jump';
-      this.animationSpeed = 0;
+    } else if (this.gatlingAnimTimer > 0) {
+      this.animationState = 'gatling';
+    } else if (this.pistolAnimTimer > 0) {
+      this.animationState = 'pistol';
     }
 
     this.updateAnimation();
@@ -311,13 +290,24 @@ export class PlayerController {
   }
 
   updateAnimation() {
-    if (this.mesh.userData.animate) {
-      this.mesh.userData.animate(
-        this.animationTime,
-        this.animationSpeed,
-        this.animationState
-      );
+    if (!this.mesh.userData.animate) return;
+
+    let progress = 0;
+
+    if (this.animationState === 'dodge') {
+      progress = 1 - this.dodgeTimer / this.dodgeDuration;
+    } else if (this.animationState === 'pistol') {
+      progress = 1 - this.pistolAnimTimer / this.pistolAnimDuration;
+    } else if (this.animationState === 'gatling') {
+      progress = 1 - this.gatlingAnimTimer / this.gatlingAnimDuration;
     }
+
+    this.mesh.userData.animate(
+      this.animationTime,
+      this.animationSpeed,
+      this.animationState,
+      progress
+    );
   }
 
   updateCamera(t, d) {
@@ -330,10 +320,6 @@ export class PlayerController {
       0.2
     );
 
-    this.camera.lookAt(
-      t.x,
-      t.y + 2.2,
-      t.z
-    );
+    this.camera.lookAt(t.x, t.y + 2.2, t.z);
   }
 }
