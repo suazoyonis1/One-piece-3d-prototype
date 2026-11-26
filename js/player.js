@@ -46,11 +46,11 @@ export class PlayerController {
 
     const fwd = new THREE.Vector3(Math.sin(this.mesh.rotation.y), 0, Math.cos(this.mesh.rotation.y));
     const speed = (keys['ShiftLeft'] && this.stamina > 5) ? 24 : 14;
-    if (keys['KeyW']) this.mesh.position.addScaledVector(fwd, speed * dt);
-    if (keys['KeyS']) this.mesh.position.addScaledVector(fwd, -speed * 0.65 * dt);
+    if (keys['KeyW']) this.mesh.position.addScaledVector(fwd, -speed * dt);
+    if (keys['KeyS']) this.mesh.position.addScaledVector(fwd, speed * 0.65 * dt);
 
     // Camera automatically turns behind Luffy wherever he is pointing
-    const targetYaw = this.mesh.rotation.y + Math.PI;
+    const targetYaw = this.mesh.rotation.y;
     this.camYaw += Math.atan2(Math.sin(targetYaw - this.camYaw), Math.cos(targetYaw - this.camYaw)) * Math.min(1, dt * 7);
 
     if (keys['Space'] && this.isGrounded) { this.velocity.y = 18; this.isGrounded = false; }
