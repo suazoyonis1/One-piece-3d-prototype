@@ -157,9 +157,12 @@ function createLuffyMesh() {
 
   let mixer = null;
   let previousTime = null;
+
   const bones = {};
 
   const X_AXIS = new THREE.Vector3(1, 0, 0);
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
+  const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
   function findBone(model, pattern) {
     let found = null;
@@ -247,72 +250,76 @@ function createLuffyMesh() {
     const rightPhase = Math.sin(phase + Math.PI);
 
     const strength = moving
-      ? (running ? 0.85 : 0.7)
+      ? (running ? 0.65 : 0.48)
       : 0;
 
-    // Thighs stop moving completely when idle.
+    // Legs swing around their measured local Z axes.
     rotateBone(
       bones.leftThigh,
-      X_AXIS,
-      leftPhase * strength
+      Z_AXIS,
+      -leftPhase * strength
     );
 
     rotateBone(
       bones.rightThigh,
-      X_AXIS,
-      rightPhase * strength
+      Z_AXIS,
+      -rightPhase * strength
     );
 
-    // Knee bends.
+    // Knees bend during the lifting part of each step.
+    const kneeStrength = running ? 0.95 : 0.75;
+
     const leftKnee = moving
-      ? Math.max(0, Math.cos(phase)) * (running ? 0.95 : 0.8)
+      ? Math.max(0, Math.cos(phase)) * kneeStrength
       : 0;
 
     const rightKnee = moving
-      ? Math.max(0, Math.cos(phase + Math.PI)) * (running ? 0.95 : 0.8)
+      ? Math.max(0, Math.cos(phase + Math.PI)) * kneeStrength
       : 0;
 
-    rotateBone(bones.leftKnee, X_AXIS, leftKnee);
-    rotateBone(bones.rightKnee, X_AXIS, rightKnee);
+    rotateBone(bones.leftKnee, Z_AXIS, leftKnee);
+    rotateBone(bones.rightKnee, Z_AXIS, rightKnee);
 
-    // Ankles and toes.
+    // Ankle movement follows the knee bend.
     rotateBone(
       bones.leftAnkle,
-      X_AXIS,
-      -leftKnee * 0.35
+      Z_AXIS,
+      -leftKnee * 0.3
     );
 
     rotateBone(
       bones.rightAnkle,
-      X_AXIS,
-      -rightKnee * 0.35
+      Z_AXIS,
+      -rightKnee * 0.3
     );
 
     rotateBone(
       bones.leftToe,
-      X_AXIS,
+      Z_AXIS,
       moving ? Math.max(0, leftPhase) * 0.12 : 0
     );
 
     rotateBone(
       bones.rightToe,
-      X_AXIS,
+      Z_AXIS,
       moving ? Math.max(0, rightPhase) * 0.12 : 0
     );
 
-    // Arms return to their original pose when idle.
-    const armSwing = moving ? leftPhase * 0.22 : 0;
+    // Lower the arms from the original T-pose.
+    // Both shoulders use their measured local Y axis.
+    const armBase = 1.05;
+    const armSwing = moving ? leftPhase * 0.16 : 0;
 
     rotateBone(
       bones.leftShoulder,
-      X_AXIS,
-      armSwing
+      Y_AXIS,
+      armBase + armSwing
     );
 
     rotateBone(
       bones.rightShoulder,
-      X_AXIS,
-      -armSwing
+      Y_AXIS,
+      armBase - armSwing
     );
 
     rotateBone(
@@ -335,11 +342,11 @@ function createLuffyMesh() {
 
     // Jump pose.
     if (state === 'jump') {
-      rotateBone(bones.leftThigh, X_AXIS, -0.5);
-      rotateBone(bones.rightThigh, X_AXIS, -0.5);
+      rotateBone(bones.leftThigh, Z_AXIS, -0.45);
+      rotateBone(bones.rightThigh, Z_AXIS, -0.45);
 
-      rotateBone(bones.leftKnee, X_AXIS, 0.7);
-      rotateBone(bones.rightKnee, X_AXIS, 0.7);
+      rotateBone(bones.leftKnee, Z_AXIS, 0.85);
+      rotateBone(bones.rightKnee, Z_AXIS, 0.85);
     }
 
     // Pistol pose.
@@ -350,8 +357,8 @@ function createLuffyMesh() {
 
       rotateBone(
         bones.rightShoulder,
-        X_AXIS,
-        0.9 * punch
+        Y_AXIS,
+        armBase + 0.8 * punch
       );
 
       rotateBone(
@@ -367,14 +374,14 @@ function createLuffyMesh() {
 
       rotateBone(
         bones.leftShoulder,
-        X_AXIS,
-        rapid * 0.6
+        Y_AXIS,
+        armBase + rapid * 0.45
       );
 
       rotateBone(
         bones.rightShoulder,
-        X_AXIS,
-        -rapid * 0.6
+        Y_AXIS,
+        armBase - rapid * 0.45
       );
     }
   }
