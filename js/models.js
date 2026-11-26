@@ -1,5 +1,6 @@
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 function mat(color, roughness = 0.7) {
   return new THREE.MeshStandardMaterial({
@@ -29,7 +30,12 @@ function capsule(parent, color, start, end, radius, segments = 12) {
   const length = direction.length();
 
   const mesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(radius, Math.max(0.01, length - radius * 2), 5, segments),
+    new THREE.CapsuleGeometry(
+      radius,
+      Math.max(0.01, length - radius * 2),
+      5,
+      segments
+    ),
     mat(color)
   );
 
@@ -56,6 +62,90 @@ function cylinder(parent, color, radiusTop, radiusBottom, height, position) {
   return mesh;
 }
 
+// Actual Sketchfab Luffy model
+function createLuffyMesh() {
+  const root = new THREE.Group();
+  const loader = new GLTFLoader();
+
+  let mixer = null;
+  let previousTime = null;
+
+  root.userData.loaded = false;
+
+  root.userData.animate = function(time = 0, speed = 0, state = 'idle') {
+    if (mixer) {
+      const delta = previousTime === null
+        ? 0
+        : Math.min(Math.max(time - previousTime, 0), 0.05);
+
+      mixer.update(delta);
+    }
+
+    previousTime = time;
+  };
+
+  loader.load(
+    './models/luffy/scene.gltf',
+
+    (gltf) => {
+      const model = gltf.scene;
+
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+
+      const targetHeight = 2.8;
+      const scale = targetHeight / (size.y || 1);
+
+      model.scale.setScalar(scale);
+
+      model.position.set(
+        -center.x * scale,
+        -bounds.min.y * scale,
+        -center.z * scale
+      );
+
+      model.traverse((object) => {
+        if (object.isMesh) {
+          object.castShadow = true;
+          object.receiveShadow = true;
+        }
+      });
+
+      root.add(model);
+      root.userData.loaded = true;
+
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+
+        const idleAnimation =
+          gltf.animations.find(animation =>
+            /idle|stand/i.test(animation.name)
+          ) || gltf.animations[0];
+
+        mixer.clipAction(idleAnimation).play();
+      }
+
+      console.log('Luffy model loaded successfully!');
+    },
+
+    (progress) => {
+      if (progress.total > 0) {
+        console.log(
+          'Loading Luffy:',
+          Math.round(progress.loaded / progress.total * 100) + '%'
+        );
+      }
+    },
+
+    (error) => {
+      console.error('Luffy model failed to load:', error);
+    }
+  );
+
+  return root;
+}
+
 function addFace(root, skinColor) {
   for (const x of [-0.16, 0.16]) {
     sphere(root, 0xffffff, [x, 2.56, 0.305], [0.075, 0.09, 0.035], 12);
@@ -69,6 +159,7 @@ function addFace(root, skinColor) {
     new THREE.TorusGeometry(0.065, 0.012, 6, 16, Math.PI),
     mat(0x6b3028)
   );
+
   mouth.position.set(0, 2.36, 0.31);
   mouth.rotation.z = Math.PI;
   root.add(mouth);
@@ -88,6 +179,7 @@ function addStrawHat(root) {
     new THREE.CylinderGeometry(0.66, 0.66, 0.075, 32),
     mat(0xf4bd35)
   );
+
   brim.position.y = 2.91;
   brim.castShadow = true;
   root.add(brim);
@@ -96,6 +188,7 @@ function addStrawHat(root) {
     new THREE.SphereGeometry(0.39, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
     mat(0xf4bd35)
   );
+
   crown.position.y = 2.92;
   crown.scale.y = 0.8;
   root.add(crown);
@@ -104,6 +197,7 @@ function addStrawHat(root) {
     new THREE.CylinderGeometry(0.395, 0.395, 0.09, 24),
     mat(0xc62828)
   );
+
   band.position.y = 2.98;
   root.add(band);
 }
@@ -136,9 +230,13 @@ function createLeg(parent, side, pants) {
 }
 
 export function createCharacterMesh(type) {
+  // Use the real downloaded model for Luffy
+  if (type === 'luffy') {
+    return createLuffyMesh();
+  }
+
   const root = new THREE.Group();
 
-  // Whole-character pivot prevents the body from separating during rolls.
   const pivot = new THREE.Group();
   pivot.position.y = 1.55;
   root.add(pivot);
@@ -148,7 +246,6 @@ export function createCharacterMesh(type) {
   pivot.add(character);
 
   const cfg = {
-    luffy: { skin: 0xf1c27d, shirt: 0xdc2626, pants: 0x2563eb, hair: 0x24160e, hat: true },
     zoro: { skin: 0xf1c27d, shirt: 0xf8fafc, pants: 0x14532d, hair: 0x16a34a },
     nami: { skin: 0xf5cba7, shirt: 0x38bdf8, pants: 0x1d4ed8, hair: 0xf97316 },
     sanji: { skin: 0xf1c27d, shirt: 0x111827, pants: 0x111827, hair: 0xfacc15 },
@@ -176,25 +273,12 @@ export function createCharacterMesh(type) {
   addFace(body, skin);
   addHair(body, hair);
 
-  if (type === 'luffy') {
-    const sash = new THREE.Mesh(
-      new THREE.TorusGeometry(0.30, 0.065, 8, 24),
-      mat(0xfacc15)
-    );
-    sash.position.set(0, 1.22, 0);
-    sash.rotation.x = Math.PI / 2;
-    body.add(sash);
-
-    sphere(body, 0xfacc15, [0, 1.67, 0.275], [0.045, 0.35, 0.025]);
-  }
-
-  if (cfg.hat) addStrawHat(body);
-
   if (cfg.cap) {
     const cap = new THREE.Mesh(
       new THREE.SphereGeometry(0.36, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
       mat(0xffffff)
     );
+
     cap.position.y = 2.82;
     body.add(cap);
   }
