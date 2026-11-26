@@ -14,7 +14,6 @@ function sphere(parent, color, position, scale, segments = 20) {
     new THREE.SphereGeometry(1, segments, segments),
     mat(color)
   );
-
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.castShadow = true;
@@ -56,7 +55,6 @@ function cylinder(parent, color, radiusTop, radiusBottom, height, position) {
     new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 20),
     mat(color)
   );
-
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -77,7 +75,6 @@ function addFace(root, skinColor) {
     new THREE.TorusGeometry(0.065, 0.012, 6, 16, Math.PI),
     mat(0x6b3028)
   );
-
   mouth.position.set(0, 2.36, 0.31);
   mouth.rotation.z = Math.PI;
   root.add(mouth);
@@ -93,82 +90,62 @@ function addHair(root, color) {
 }
 
 function addStrawHat(root) {
-  const yellow = mat(0xf4bd35);
-  const red = mat(0xc62828);
-
   const brim = new THREE.Mesh(
     new THREE.CylinderGeometry(0.66, 0.66, 0.075, 32),
-    yellow
+    mat(0xf4bd35)
   );
-
   brim.position.y = 2.91;
   brim.castShadow = true;
   root.add(brim);
 
   const crown = new THREE.Mesh(
     new THREE.SphereGeometry(
-      0.39,
-      24,
-      16,
-      0,
-      Math.PI * 2,
-      0,
-      Math.PI / 2
+      0.39, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2
     ),
-    yellow
+    mat(0xf4bd35)
   );
-
   crown.position.y = 2.92;
   crown.scale.y = 0.8;
   root.add(crown);
 
   const band = new THREE.Mesh(
     new THREE.CylinderGeometry(0.395, 0.395, 0.09, 24),
-    red
+    mat(0xc62828)
   );
-
   band.position.y = 2.98;
   root.add(band);
 }
 
-function createArm(root, side, skin, shirt) {
+function createArm(parent, side, skin, shirt) {
   const arm = new THREE.Group();
   arm.position.set(side * 0.43, 1.98, 0);
-  root.add(arm);
+  parent.add(arm);
 
-  // Shoulder and sleeve
   sphere(arm, shirt, [0, -0.08, 0], [0.19, 0.20, 0.18]);
 
   capsule(
-    arm,
-    shirt,
+    arm, shirt,
     [0, -0.05, 0],
     [side * 0.06, -0.30, 0],
     0.15
   );
 
-  // Upper arm
   capsule(
-    arm,
-    skin,
+    arm, skin,
     [side * 0.06, -0.25, 0],
     [side * 0.12, -0.55, 0],
     0.115
   );
 
-  // Forearm
   capsule(
-    arm,
-    skin,
+    arm, skin,
     [side * 0.12, -0.50, 0],
     [side * 0.18, -0.78, 0.02],
     0.105
   );
 
-  // Hand
   sphere(
-    arm,
-    skin,
+    arm, skin,
     [side * 0.18, -0.84, 0.03],
     [0.13, 0.14, 0.13]
   );
@@ -176,41 +153,17 @@ function createArm(root, side, skin, shirt) {
   return arm;
 }
 
-function createLeg(root, side, pants) {
+function createLeg(parent, side, pants) {
   const leg = new THREE.Group();
   leg.position.set(side * 0.20, 1.05, 0);
-  root.add(leg);
+  parent.add(leg);
 
-  // Upper leg
-  capsule(
-    leg,
-    pants,
-    [0, 0, 0],
-    [0, -0.40, 0],
-    0.16
-  );
+  capsule(leg, pants, [0, 0, 0], [0, -0.40, 0], 0.16);
+  sphere(leg, pants, [0, -0.40, 0], [0.155, 0.16, 0.16]);
+  capsule(leg, pants, [0, -0.40, 0], [0, -0.82, 0], 0.13);
 
-  // Knee
   sphere(
-    leg,
-    pants,
-    [0, -0.40, 0],
-    [0.155, 0.16, 0.16]
-  );
-
-  // Lower leg
-  capsule(
-    leg,
-    pants,
-    [0, -0.40, 0],
-    [0, -0.82, 0],
-    0.13
-  );
-
-  // Shoe
-  sphere(
-    leg,
-    0x713f12,
+    leg, 0x713f12,
     [0, -0.90, 0.10],
     [0.19, 0.13, 0.30]
   );
@@ -220,6 +173,15 @@ function createLeg(root, side, pants) {
 
 export function createCharacterMesh(type) {
   const root = new THREE.Group();
+
+  // The pivot rotates the WHOLE character together.
+  const pivot = new THREE.Group();
+  pivot.position.y = 1.55;
+  root.add(pivot);
+
+  const character = new THREE.Group();
+  character.position.y = -1.55;
+  pivot.add(character);
 
   const cfg = {
     luffy: {
@@ -282,138 +244,168 @@ export function createCharacterMesh(type) {
 
   const { skin, shirt, pants, hair } = cfg;
 
-  // Animated upper body
+  // Body
   const body = new THREE.Group();
-  root.add(body);
+  character.add(body);
 
   cylinder(body, skin, 0.14, 0.15, 0.22, [0, 2.12, 0]);
-
   sphere(body, shirt, [0, 1.65, 0], [0.43, 0.59, 0.29]);
   sphere(body, pants, [0, 1.12, 0], [0.37, 0.20, 0.28]);
-
   sphere(body, skin, [0, 2.48, 0], [0.34, 0.40, 0.31], 24);
 
   addFace(body, skin);
   addHair(body, hair);
 
-  // Luffy's sash and vest detail
   if (type === 'luffy') {
     const sash = new THREE.Mesh(
       new THREE.TorusGeometry(0.30, 0.065, 8, 24),
       mat(0xfacc15)
     );
-
     sash.position.set(0, 1.22, 0);
     sash.rotation.x = Math.PI / 2;
     body.add(sash);
 
     sphere(
-      body,
-      0xfacc15,
+      body, 0xfacc15,
       [0, 1.67, 0.275],
       [0.045, 0.35, 0.025]
     );
   }
 
-  if (cfg.hat) {
-    addStrawHat(body);
-  }
+  if (cfg.hat) addStrawHat(body);
 
   if (cfg.cap) {
     const cap = new THREE.Mesh(
       new THREE.SphereGeometry(
-        0.36,
-        20,
-        12,
-        0,
-        Math.PI * 2,
-        0,
-        Math.PI / 2
+        0.36, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2
       ),
       mat(0xffffff)
     );
-
     cap.position.y = 2.82;
     body.add(cap);
   }
 
-  // Separate animated arms
-  const leftArm = createArm(root, -1, skin, shirt);
-  const rightArm = createArm(root, 1, skin, shirt);
+  // Arms and legs are part of the same rotating character rig.
+  const leftArm = createArm(character, -1, skin, shirt);
+  const rightArm = createArm(character, 1, skin, shirt);
+  const leftLeg = createLeg(character, -1, pants);
+  const rightLeg = createLeg(character, 1, pants);
 
-  // Separate animated legs
-  const leftLeg = createLeg(root, -1, pants);
-  const rightLeg = createLeg(root, 1, pants);
-
-  // Animation controller
-  root.userData.animate = function(time = 0, speed = 0, state = 'idle') {
+  root.userData.animate = function(time = 0, speed = 0, state = 'idle', progress = 0) {
     const movement = THREE.MathUtils.clamp(speed, 0, 1);
-    const isMoving = movement > 0.05;
-
-    const running = state === 'run' || movement > 0.75;
+    const running = state === 'run';
     const jumping = state === 'jump';
     const dodging = state === 'dodge';
+    const pistol = state === 'pistol';
+    const gatling = state === 'gatling';
 
-    const frequency = running ? 13 : 8;
-    const amount = isMoving ? movement : 0;
+    const swing = Math.sin(time * (running ? 13 : 8)) * movement;
 
-    const swing = Math.sin(time * frequency) * amount;
+    // Reset the rig every frame.
+    pivot.rotation.set(0, 0, 0);
+    body.rotation.set(0, 0, 0);
 
-    // Reset body pose
-    body.rotation.x = 0;
-    body.rotation.z = 0;
+    leftArm.rotation.set(0, 0, 0);
+    rightArm.rotation.set(0, 0, 0);
+    leftLeg.rotation.set(0, 0, 0);
+    rightLeg.rotation.set(0, 0, 0);
 
-    // Idle breathing
-    const breathing = Math.sin(time * 2.5) * 0.018;
-    body.position.y = breathing;
+    body.position.y = Math.sin(time * 2.5) * 0.018;
 
-    // Normal walking and running
-    leftLeg.rotation.x = swing * 0.8;
-    rightLeg.rotation.x = -swing * 0.8;
+    // Walking and running
+    if (state === 'walk' || running) {
+      leftLeg.rotation.x = swing * 0.8;
+      rightLeg.rotation.x = -swing * 0.8;
 
-    leftArm.rotation.x = -swing * 0.65;
-    rightArm.rotation.x = swing * 0.65;
+      leftArm.rotation.x = -swing * 0.65;
+      rightArm.rotation.x = swing * 0.65;
 
-    // Running body movement
-    if (running && isMoving) {
-      body.position.y += Math.abs(swing) * 0.045;
-      body.rotation.x = -0.08;
+      if (running) {
+        body.rotation.x = -0.08;
+        body.position.y += Math.abs(swing) * 0.045;
+      }
     }
 
-    // Jump pose
+    // Gomu Gomu no Pistol
+    if (pistol) {
+      const p = THREE.MathUtils.clamp(progress, 0, 1);
+
+      // Pull the right arm back, then punch forward.
+      if (p < 0.30) {
+        const pull = p / 0.30;
+        rightArm.rotation.x = 0.85 * pull;
+        rightArm.rotation.z = -0.35 * pull;
+        body.rotation.y = -0.12 * pull;
+      } else if (p < 0.62) {
+        const punch = (p - 0.30) / 0.32;
+        rightArm.rotation.x = 0.85 - punch * 2.55;
+        rightArm.rotation.z = -0.35 + punch * 0.35;
+        body.rotation.y = -0.12 + punch * 0.25;
+        body.rotation.x = -0.10;
+      } else {
+        const recover = (p - 0.62) / 0.38;
+        rightArm.rotation.x = -1.70 * (1 - recover);
+        rightArm.rotation.z = -0.0;
+        body.rotation.y = 0.13 * (1 - recover);
+      }
+
+      leftArm.rotation.x = 0.35;
+      leftLeg.rotation.x = -0.10;
+      rightLeg.rotation.x = 0.10;
+    }
+
+    // Gomu Gomu no Gatling
+    if (gatling) {
+      const rapid = Math.sin(time * 42);
+
+      rightArm.rotation.x = rapid > 0 ? -1.65 : 0.35;
+      leftArm.rotation.x = rapid < 0 ? -1.65 : 0.35;
+
+      rightArm.rotation.z = -0.12;
+      leftArm.rotation.z = 0.12;
+
+      body.rotation.x = -0.12;
+      body.rotation.y = Math.sin(time * 18) * 0.06;
+
+      leftLeg.rotation.x = Math.sin(time * 18) * 0.12;
+      rightLeg.rotation.x = -Math.sin(time * 18) * 0.12;
+    }
+
+    // Jump
     if (jumping) {
       leftArm.rotation.x = -1.1;
       rightArm.rotation.x = -1.1;
-
       leftArm.rotation.z = -0.25;
       rightArm.rotation.z = 0.25;
-
       leftLeg.rotation.x = -0.55;
       rightLeg.rotation.x = -0.55;
-
       body.rotation.x = -0.08;
     }
 
-    // Dodge pose
+    // Full-body forward dodge roll.
     if (dodging) {
-      body.rotation.z = 0.22;
+      const p = THREE.MathUtils.clamp(progress, 0, 1);
+      const eased = p * p * (3 - 2 * p);
 
-      leftArm.rotation.x = -0.9;
-      rightArm.rotation.x = 0.9;
+      pivot.rotation.x = Math.PI * 2 * eased;
 
-      leftLeg.rotation.x = -0.65;
-      rightLeg.rotation.x = 0.45;
+      leftArm.rotation.x = -0.65;
+      rightArm.rotation.x = -0.65;
+      leftArm.rotation.z = -0.35;
+      rightArm.rotation.z = 0.35;
+
+      leftLeg.rotation.x = 0.35;
+      rightLeg.rotation.x = 0.35;
     }
 
     // Gentle idle arm movement
-    if (!isMoving && !jumping && !dodging) {
+    if (state === 'idle') {
       leftArm.rotation.z = Math.sin(time * 2) * 0.025;
       rightArm.rotation.z = -Math.sin(time * 2) * 0.025;
     }
   };
 
   root.scale.setScalar(cfg.scale || 1);
-
   return root;
 }
 
@@ -424,38 +416,32 @@ export function createGoingMerryMesh() {
     new THREE.BoxGeometry(5.5, 2.2, 13),
     mat(0x92400e)
   );
-
   hull.position.y = 1.0;
 
   const deck = new THREE.Mesh(
     new THREE.BoxGeometry(5.1, 0.2, 12.6),
     mat(0xd97706)
   );
-
   deck.position.y = 2.15;
 
   const mast = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.28, 11, 12),
     mat(0x78350f)
   );
-
   mast.position.set(0, 7.2, 0.5);
 
   const sail = new THREE.Mesh(
     new THREE.BoxGeometry(6.2, 5.2, 0.15),
     mat(0xf8fafc)
   );
-
   sail.position.set(0, 8.2, 0.8);
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.85, 16, 16),
     mat(0xf8fafc)
   );
-
   head.position.set(0, 2.7, 7.2);
 
   ship.add(hull, deck, mast, sail, head);
-
   return ship;
 }
