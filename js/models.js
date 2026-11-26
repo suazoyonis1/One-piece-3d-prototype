@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ========================================
-// BASIC HELPERS
+// MATERIALS AND HELPERS
 // ========================================
 
 function makeMaterial(color, roughness = 0.75) {
@@ -15,11 +15,13 @@ function addSphere(parent, color, position, scale) {
     new THREE.SphereGeometry(1, 16, 12),
     makeMaterial(color)
   );
+
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
@@ -28,19 +30,23 @@ function addBox(parent, color, position, scale) {
     new THREE.BoxGeometry(...scale),
     makeMaterial(color)
   );
+
   mesh.position.set(...position);
+  mesh.scale.set(...scale);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
 // ========================================
-// PROCEDURAL CHARACTER FALLBACK
+// PROCEDURAL CHARACTER
 // ========================================
 
 function createProceduralCharacter(type = 'pirate') {
   const root = new THREE.Group();
+
   const colors = {
     luffy: [0xf1c27d, 0xdc2626, 0x1d4ed8, 0x171717],
     zoro: [0xf1c27d, 0xf8fafc, 0x14532d, 0x16a34a],
@@ -73,6 +79,7 @@ function createProceduralCharacter(type = 'pirate') {
       new THREE.CylinderGeometry(0.62, 0.62, 0.07, 24),
       makeMaterial(0xf4bd35)
     );
+
     brim.position.y = 2.82;
     body.add(brim);
 
@@ -80,6 +87,7 @@ function createProceduralCharacter(type = 'pirate') {
       new THREE.CylinderGeometry(0.3, 0.38, 0.28, 24),
       makeMaterial(0xf4bd35)
     );
+
     hat.position.y = 2.96;
     body.add(hat);
 
@@ -128,7 +136,7 @@ function createProceduralCharacter(type = 'pirate') {
 }
 
 // ========================================
-// LUFFY MODEL AND SKELETON
+// LUFFY MODEL
 // ========================================
 
 function createLuffyMesh() {
@@ -149,10 +157,9 @@ function createLuffyMesh() {
 
   let mixer = null;
   let previousTime = null;
-  let bones = {};
+  const bones = {};
 
   const X_AXIS = new THREE.Vector3(1, 0, 0);
-  const Y_AXIS = new THREE.Vector3(0, 1, 0);
   const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
   function findBone(model, pattern) {
@@ -160,7 +167,7 @@ function createLuffyMesh() {
 
     model.traverse((object) => {
       if (
-        (object.isBone || object.type === 'Bone') &&
+        object.isBone &&
         pattern.test(object.name)
       ) {
         found = object;
@@ -206,45 +213,29 @@ function createLuffyMesh() {
   }
 
   // ========================================
-  // FIND THE ACTUAL LUFFY BONES
+  // FIND ALL ANIMATION BONES
   // ========================================
 
   function setupBones(model) {
-    bones.leftThigh = saveBone(
-      findBone(model, /thighL_/i)
-    );
+    bones.leftThigh = saveBone(findBone(model, /thighL_/i));
+    bones.rightThigh = saveBone(findBone(model, /thighR_/i));
 
-    bones.rightThigh = saveBone(
-      findBone(model, /thighR_/i)
-    );
+    bones.leftKnee = saveBone(findBone(model, /kneeL_/i));
+    bones.rightKnee = saveBone(findBone(model, /kneeR_/i));
 
-    bones.leftKnee = saveBone(
-      findBone(model, /kneeL_/i)
-    );
+    bones.leftShoulder = saveBone(findBone(model, /shoulder_1L_/i));
+    bones.rightShoulder = saveBone(findBone(model, /shoulder_1R_/i));
 
-    bones.rightKnee = saveBone(
-      findBone(model, /kneeR_/i)
-    );
+    bones.leftElbow = saveBone(findBone(model, /elbowL_/i));
+    bones.rightElbow = saveBone(findBone(model, /elbowR_/i));
 
-    bones.leftShoulder = saveBone(
-      findBone(model, /shoulder_1L_/i)
-    );
+    bones.leftAnkle = saveBone(findBone(model, /ankleL_431/i));
+    bones.rightAnkle = saveBone(findBone(model, /ankleR_442/i));
 
-    bones.rightShoulder = saveBone(
-      findBone(model, /shoulder_1R_/i)
-    );
+    bones.leftToe = saveBone(findBone(model, /toesL_433/i));
+    bones.rightToe = saveBone(findBone(model, /toesR_444/i));
 
-    bones.leftElbow = saveBone(
-      findBone(model, /elbowL_/i)
-    );
-
-    bones.rightElbow = saveBone(
-      findBone(model, /elbowR_/i)
-    );
-
-    bones.spine = saveBone(
-      findBone(model, /spine_upper_/i)
-    );
+    bones.spine = saveBone(findBone(model, /spine_upper_/i));
 
     const found = Object.keys(bones).filter(
       key => bones[key] !== null
@@ -252,16 +243,6 @@ function createLuffyMesh() {
 
     console.log('LUFFY ANIMATION BONES FOUND:', found);
     console.log('LUFFY ANIMATION BONE COUNT:', found.length);
-
-    // FIND FOOT, ANKLE AND TOE BONES
-    model.traverse((object) => {
-      if (
-        object.isBone &&
-        /foot|ankle|toe/i.test(object.name)
-      ) {
-        console.log('LUFFY FOOT BONE:', object.name);
-      }
-    });
 
     for (const [name, bone] of Object.entries(bones)) {
       if (!bone) {
@@ -271,7 +252,7 @@ function createLuffyMesh() {
   }
 
   // ========================================
-  // WALKING AND RUNNING ANIMATION
+  // WALKING ANIMATION
   // ========================================
 
   function animateSkeleton(time, state, speed, progress) {
@@ -279,105 +260,145 @@ function createLuffyMesh() {
     const running = state === 'run';
 
     const stride = running ? 11 : 8;
-    const amount = moving ? Math.sin(time * stride) : 0;
-    const strength = moving ? (running ? 0.85 : 0.55) : 0;
+    const phase = time * stride;
 
+    const leftPhase = Math.sin(phase);
+    const rightPhase = Math.sin(phase + Math.PI);
+
+    const legStrength = running ? 0.85 : 0.7;
+
+    // Thigh movement
     rotateBone(
       bones.leftThigh,
       X_AXIS,
-      amount * strength
+      leftPhase * legStrength
     );
 
     rotateBone(
       bones.rightThigh,
       X_AXIS,
-      -amount * strength
+      rightPhase * legStrength
     );
 
+    // Bend knees as each foot comes forward
     const leftKneeBend = moving
-      ? Math.max(0, Math.sin(time * stride + Math.PI / 2)) * 0.55
+      ? Math.max(0, Math.cos(phase)) * (running ? 0.95 : 0.8)
       : 0;
 
     const rightKneeBend = moving
-      ? Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
+      ? Math.max(0, Math.cos(phase + Math.PI)) * (running ? 0.95 : 0.8)
       : 0;
 
     rotateBone(bones.leftKnee, X_AXIS, leftKneeBend);
     rotateBone(bones.rightKnee, X_AXIS, rightKneeBend);
 
-    const armSwing = moving ? amount * strength * 0.35 : 0;
+    // Ankles help keep the feet from pointing awkwardly
+    rotateBone(
+      bones.leftAnkle,
+      X_AXIS,
+      moving ? -leftKneeBend * 0.35 : 0
+    );
 
+    rotateBone(
+      bones.rightAnkle,
+      X_AXIS,
+      moving ? -rightKneeBend * 0.35 : 0
+    );
+
+    // Small toe movement
+    rotateBone(
+      bones.leftToe,
+      X_AXIS,
+      moving ? Math.max(0, leftPhase) * 0.12 : 0
+    );
+
+    rotateBone(
+      bones.rightToe,
+      X_AXIS,
+      moving ? Math.max(0, rightPhase) * 0.12 : 0
+    );
+
+    // Arms swing opposite to the legs
+    const armSwing = moving ? leftPhase * 0.22 : 0;
+
+    // Reversed shoulder directions and smaller angles
     rotateBoneMultiple(bones.leftShoulder, [
-      { axis: Z_AXIS, amount: 1.15 },
+      { axis: Z_AXIS, amount: -0.65 },
       { axis: X_AXIS, amount: armSwing }
     ]);
 
     rotateBoneMultiple(bones.rightShoulder, [
-      { axis: Z_AXIS, amount: -1.15 },
+      { axis: Z_AXIS, amount: 0.65 },
       { axis: X_AXIS, amount: -armSwing }
     ]);
 
     rotateBone(
       bones.leftElbow,
       X_AXIS,
-      moving ? 0.25 + Math.max(0, amount) * 0.2 : 0.12
+      moving ? 0.12 + Math.max(0, leftPhase) * 0.12 : 0.08
     );
 
     rotateBone(
       bones.rightElbow,
       X_AXIS,
-      moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0.12
+      moving ? 0.12 + Math.max(0, rightPhase) * 0.12 : 0.08
     );
 
     rotateBone(
       bones.spine,
       X_AXIS,
-      moving ? -0.06 : 0
+      moving ? -0.04 : 0
     );
 
+    // Jump pose
     if (state === 'jump') {
-      rotateBone(bones.leftThigh, X_AXIS, -0.55);
-      rotateBone(bones.rightThigh, X_AXIS, -0.55);
+      rotateBone(bones.leftThigh, X_AXIS, -0.5);
+      rotateBone(bones.rightThigh, X_AXIS, -0.5);
+
+      rotateBone(bones.leftKnee, X_AXIS, 0.7);
+      rotateBone(bones.rightKnee, X_AXIS, 0.7);
 
       rotateBoneMultiple(bones.leftShoulder, [
-        { axis: Z_AXIS, amount: 0.45 },
+        { axis: Z_AXIS, amount: -0.5 },
         { axis: X_AXIS, amount: -0.5 }
       ]);
 
       rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: -0.45 },
+        { axis: Z_AXIS, amount: 0.5 },
         { axis: X_AXIS, amount: 0.5 }
       ]);
     }
 
+    // Pistol pose
     if (state === 'pistol') {
       const punch = Math.sin(
         Math.PI * Math.min(1, progress)
       );
 
       rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: -0.5 },
-        { axis: X_AXIS, amount: 1.1 * punch }
+        { axis: Z_AXIS, amount: 0.5 },
+        { axis: X_AXIS, amount: 0.9 * punch }
       ]);
 
       rotateBone(
         bones.rightElbow,
         X_AXIS,
-        -0.3 * punch
+        -0.25 * punch
       );
     }
 
+    // Gatling pose
     if (state === 'gatling') {
       const rapid = Math.sin(time * 35);
 
       rotateBoneMultiple(bones.leftShoulder, [
-        { axis: Z_AXIS, amount: 0.7 },
-        { axis: X_AXIS, amount: rapid * 0.8 }
+        { axis: Z_AXIS, amount: -0.5 },
+        { axis: X_AXIS, amount: rapid * 0.6 }
       ]);
 
       rotateBoneMultiple(bones.rightShoulder, [
-        { axis: Z_AXIS, amount: -0.7 },
-        { axis: X_AXIS, amount: -rapid * 0.8 }
+        { axis: Z_AXIS, amount: 0.5 },
+        { axis: X_AXIS, amount: -rapid * 0.6 }
       ]);
     }
   }
@@ -400,11 +421,7 @@ function createLuffyMesh() {
     if (mixer) {
       const delta = previousTime === null
         ? 0
-        : THREE.MathUtils.clamp(
-            time - previousTime,
-            0,
-            0.05
-          );
+        : THREE.MathUtils.clamp(time - previousTime, 0, 0.05);
 
       mixer.update(delta);
       previousTime = time;
@@ -414,7 +431,7 @@ function createLuffyMesh() {
   };
 
   // ========================================
-  // LOAD MODEL
+  // LOAD LUFFY GLTF
   // ========================================
 
   loader.load(
@@ -428,6 +445,7 @@ function createLuffyMesh() {
       const center = bounds.getCenter(new THREE.Vector3());
 
       const scale = 2.8 / (size.y || 1);
+
       model.scale.setScalar(scale);
 
       model.position.set(
@@ -494,6 +512,7 @@ export function createCharacterMesh(type = 'pirate') {
 
 export function createGoingMerryMesh() {
   const ship = new THREE.Group();
+
   const wood = makeMaterial(0x92400e);
   const deckMaterial = makeMaterial(0xd97706);
   const white = makeMaterial(0xf8fafc);
