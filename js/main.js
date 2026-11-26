@@ -55,7 +55,7 @@ class OnePieceGame {
       this.dlg = npc;
       document.getElementById('dialogue-speaker').textContent = npc.name;
       document.getElementById('dialogue-role').textContent = npc.role;
-      document.getElementById('dialogue-text').textContent = npc.dialogue;
+      document.getElementById('dialogue-text').textContent = Array.isArray(npc.dialogue) ? npc.dialogue.join(' ') : npc.dialogue;
       document.getElementById('dialogue-box').classList.remove('hidden');
       return;
     }
@@ -70,6 +70,11 @@ class OnePieceGame {
     this.qm.update(this.player.mesh.position,this.isSailing);
     document.getElementById('hp-bar').style.width = `${this.player.hp}%`;
     document.getElementById('stamina-bar').style.width = `${this.player.stamina}%`;
+    document.getElementById('hp-text').textContent = `${Math.ceil(this.player.hp)} / ${this.player.maxHp}`;
+    document.getElementById('stamina-text').textContent = `${Math.ceil(this.player.stamina)} / ${this.player.maxStamina}`;
+    document.getElementById('berries-text').textContent = `B ${this.player.berries}`;
+    document.getElementById('cd-q').style.height = `${(this.player.cdPistol / 2.5) * 100}%`;
+    document.getElementById('cd-e').style.height = `${(this.player.cdGatling / 5) * 100}%`;
     this.renderer.render(this.scene,this.camera);
   }
 }
