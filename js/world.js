@@ -8,14 +8,23 @@ function createGroundTexture(baseColor, details, repeat = 8) {
   canvas.height = 512;
 
   const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('Could not create ground texture canvas');
+  }
+
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, 512, 512);
 
-  for (let i = 0; i < 22000; i++) {
-    ctx.fillStyle = details[Math.floor(Math.random() * details.length)];
-    ctx.globalAlpha = Math.random() * 0.45;
+  for (let i = 0; i < 5000; i++) {
+    ctx.fillStyle = details[
+      Math.floor(Math.random() * details.length)
+    ];
+
+    ctx.globalAlpha = Math.random() * 0.4;
 
     const size = Math.random() * 3 + 1;
+
     ctx.fillRect(
       Math.random() * 512,
       Math.random() * 512,
@@ -31,7 +40,7 @@ function createGroundTexture(baseColor, details, repeat = 8) {
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeat, repeat);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = 4;
 
   return texture;
 }
@@ -72,9 +81,11 @@ export class World {
       0x526b3b,
       2
     );
+
     this.scene.add(ambient);
 
     const sun = new THREE.DirectionalLight(0xffe6b5, 3);
+
     sun.position.set(120, 180, 100);
     sun.castShadow = true;
 
@@ -92,7 +103,10 @@ export class World {
 
     // Ocean
     const waterGeometry = new THREE.PlaneGeometry(
-      2400, 2400, 120, 120
+      2400,
+      2400,
+      80,
+      80
     );
 
     waterGeometry.rotateX(-Math.PI / 2);
@@ -115,7 +129,7 @@ export class World {
     this.oceanMesh.receiveShadow = true;
     this.scene.add(this.oceanMesh);
 
-    // Islands
+    // Foosha Village
     this.addIsland(
       'foosha',
       'Foosha Village',
@@ -127,6 +141,7 @@ export class World {
 
     this.createFooshaVillage();
 
+    // Shells Town
     this.addIsland(
       'shells',
       'Shells Town (Marine Base)',
@@ -136,6 +151,7 @@ export class World {
       2.25
     );
 
+    // Baratie
     this.addIsland(
       'baratie',
       'Baratie (Sea Restaurant)',
@@ -146,11 +162,13 @@ export class World {
     );
 
     // Supply crates
-    [
+    const cratePositions = [
       new THREE.Vector3(14, 2.8, 6),
       new THREE.Vector3(-12, 2.8, 12),
       new THREE.Vector3(4, 2.8, 22)
-    ].forEach((position, index) => {
+    ];
+
+    cratePositions.forEach((position, index) => {
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(1.8, 1.8, 1.8),
         new THREE.MeshStandardMaterial({
@@ -183,7 +201,7 @@ export class World {
 
     const material = new THREE.MeshStandardMaterial({
       map: texture,
-      color: 0xffffff,
+      color: color,
       roughness: 0.95
     });
 
@@ -324,7 +342,7 @@ export class World {
       this.scene.add(bush);
     }
 
-    // Colorful flowers
+    // Flowers
     const flowerColors = [
       0xff4d6d,
       0xffd166,
@@ -341,7 +359,9 @@ export class World {
 
       const stem = new THREE.Mesh(
         new THREE.CylinderGeometry(0.035, 0.045, 0.55, 6),
-        new THREE.MeshStandardMaterial({ color: 0x287a36 })
+        new THREE.MeshStandardMaterial({
+          color: 0x287a36
+        })
       );
 
       stem.position.y = 0.27;
@@ -374,7 +394,9 @@ export class World {
 
       const centerDot = new THREE.Mesh(
         new THREE.SphereGeometry(0.075, 10, 8),
-        new THREE.MeshStandardMaterial({ color: 0xffd700 })
+        new THREE.MeshStandardMaterial({
+          color: 0xffd700
+        })
       );
 
       centerDot.position.y = 0.59;
@@ -503,13 +525,15 @@ export class World {
     // Door
     const door = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 2.7, 0.2),
-      new THREE.MeshStandardMaterial({ color: 0x49301f })
+      new THREE.MeshStandardMaterial({
+        color: 0x49301f
+      })
     );
 
     door.position.set(0, 1.35, depth / 2 + 0.12);
     group.add(door);
 
-    // Windows and frames
+    // Windows
     const windowMaterial = new THREE.MeshStandardMaterial({
       color: 0x75c9e8,
       roughness: 0.3,
@@ -527,7 +551,12 @@ export class World {
         frameMaterial
       );
 
-      frame.position.set(wx, height * 0.65, depth / 2 + 0.08);
+      frame.position.set(
+        wx,
+        height * 0.65,
+        depth / 2 + 0.08
+      );
+
       group.add(frame);
 
       const window = new THREE.Mesh(
@@ -535,16 +564,25 @@ export class World {
         windowMaterial
       );
 
-      window.position.set(wx, height * 0.65, depth / 2 + 0.14);
+      window.position.set(
+        wx,
+        height * 0.65,
+        depth / 2 + 0.14
+      );
+
       group.add(window);
 
-      // Window crossbars
       const verticalBar = new THREE.Mesh(
         new THREE.BoxGeometry(0.08, 1.3, 0.08),
         frameMaterial
       );
 
-      verticalBar.position.set(wx, height * 0.65, depth / 2 + 0.25);
+      verticalBar.position.set(
+        wx,
+        height * 0.65,
+        depth / 2 + 0.25
+      );
+
       group.add(verticalBar);
 
       const horizontalBar = new THREE.Mesh(
@@ -552,7 +590,12 @@ export class World {
         frameMaterial
       );
 
-      horizontalBar.position.set(wx, height * 0.65, depth / 2 + 0.25);
+      horizontalBar.position.set(
+        wx,
+        height * 0.65,
+        depth / 2 + 0.25
+      );
+
       group.add(horizontalBar);
     });
 
@@ -565,7 +608,12 @@ export class World {
         })
       );
 
-      sign.position.set(0, height + 0.2, depth / 2 + 0.2);
+      sign.position.set(
+        0,
+        height + 0.2,
+        depth / 2 + 0.2
+      );
+
       group.add(sign);
     }
 
@@ -598,7 +646,7 @@ export class World {
 
     dock.add(walkway);
 
-    // Individual planks
+    // Planks
     for (let i = 0; i < 12; i++) {
       const plank = new THREE.Mesh(
         new THREE.BoxGeometry(9.2, 0.15, 1.7),
@@ -678,13 +726,13 @@ export class World {
   }
 
   createClouds() {
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 1
+    });
+
     for (let i = 0; i < 12; i++) {
       const cloud = new THREE.Group();
-
-      const material = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 1
-      });
 
       for (let j = 0; j < 5; j++) {
         const puff = new THREE.Mesh(
@@ -718,19 +766,32 @@ export class World {
   }
 
   getIslandAt(pos) {
-    return this.islands.find(island =>
-      Math.hypot(
+    if (!pos || !this.islands) return null;
+
+    for (const island of this.islands) {
+      const distance = Math.hypot(
         pos.x - island.center.x,
         pos.z - island.center.z
-      ) <= island.radius
-    ) || null;
+      );
+
+      if (distance <= island.radius) {
+        return island;
+      }
+    }
+
+    return null;
   }
 
   update(dt) {
+    if (!this.oceanMesh || !this.oceanMesh.geometry) {
+      return;
+    }
+
     this.waterTime += dt;
 
     // Animated ocean waves
-    const positions = this.oceanMesh.geometry.attributes.position;
+    const positions =
+      this.oceanMesh.geometry.attributes.position;
 
     for (let i = 0; i < positions.count; i++) {
       const x = this.waterPositions[i * 3];
@@ -739,14 +800,21 @@ export class World {
       const wave =
         Math.sin(x * 0.025 + this.waterTime * 1.4) * 0.5 +
         Math.cos(z * 0.035 + this.waterTime) * 0.35 +
-        Math.sin((x + z) * 0.018 + this.waterTime * 0.7) * 0.2;
+        Math.sin(
+          (x + z) * 0.018 + this.waterTime * 0.7
+        ) * 0.2;
 
       positions.array[i * 3 + 1] =
         this.waterPositions[i * 3 + 1] + wave;
     }
 
     positions.needsUpdate = true;
-    this.oceanMesh.geometry.computeVertexNormals();
+
+    // Recalculate ocean normals less frequently
+    if (Math.floor(this.waterTime * 10) !==
+        Math.floor((this.waterTime - dt) * 10)) {
+      this.oceanMesh.geometry.computeVertexNormals();
+    }
 
     // Moving clouds
     this.clouds.forEach(cloud => {
