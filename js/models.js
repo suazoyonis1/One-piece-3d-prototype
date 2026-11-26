@@ -1,6 +1,20 @@
 import * as THREE from 'three';
 import { GLTFLoader } from './GLTFLoader.js';
 const gltfLoader = new GLTFLoader();
+function attachCustomGLTF(root, path, h) {
+  gltfLoader.load(path, (g) => {
+    const m = g.scene;
+    const b = new THREE.Box3().setFromObject(m);
+    m.scale.setScalar(h / (b.getSize(new THREE.Vector3()).y || 1));
+    b.setFromObject(m);
+    const c = b.getCenter(new THREE.Vector3());
+    m.position.set(-c.x, -b.min.y, -c.z);
+    root.clear(); root.add(m);
+  });
+}
+
+import { GLTFLoader } from './GLTFLoader.js';
+const gltfLoader = new GLTFLoader();
 function attachCustomGLTF(root, path, targetHeight) {
   gltfLoader.load(path, (gltf) => {
     const m = gltf.scene;
@@ -142,6 +156,7 @@ export function createCharacterMesh(type) {
   root.scale.setScalar(scale);
   root.userData.limbs = { leftLeg, rightLeg, leftArmPivot, rightArmPivot, head };
   attachCustomGLB(root, `./assets/${type}.glb`, 3.1 * scale);
+  if (type === 'luffy') attachCustomGLTF(root, './assets/luffy/scene.gltf', 3.2);
   if (type === 'luffy') attachCustomGLTF(root, './assets/luffy/scene.gltf', 3.2);
   return root;
 }
