@@ -50,7 +50,7 @@ export class World {
       0x45a94b,
       2.3
     );
-
+this.createFooshaVillage();
     this.addIsland(
       'shells',
       'Shells Town (Marine Base)',
@@ -233,6 +233,238 @@ export class World {
       bush.scale.set(1.2, 0.7, 1);
       this.scene.add(bush);
     }
+  }
+
+  createFooshaVillage() {
+    const center = new THREE.Vector3(0, 0, 0);
+    const groundY = 2.3;
+
+    // Sandy beach around Foosha
+    const beach = new THREE.Mesh(
+      new THREE.TorusGeometry(45, 2.2, 8, 80),
+      new THREE.MeshStandardMaterial({
+        color: 0xe8cf91,
+        roughness: 1
+      })
+    );
+
+    beach.rotation.x = -Math.PI / 2;
+    beach.position.y = groundY + 0.08;
+    this.scene.add(beach);
+
+    // Village walking path
+    const pathMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc5a16b,
+      roughness: 1
+    });
+
+    for (let i = 0; i < 8; i++) {
+      const path = new THREE.Mesh(
+        new THREE.BoxGeometry(3.5, 0.12, 5),
+        pathMaterial
+      );
+
+      path.position.set(
+        0,
+        groundY + 0.12,
+        9 - i * 4
+      );
+
+      this.scene.add(path);
+    }
+
+    // Village houses
+    this.createVillageHouse(-17, -12, 0, false);
+    this.createVillageHouse(17, -12, Math.PI / 2, false);
+    this.createVillageHouse(-19, 12, 0, false);
+    this.createVillageHouse(19, 12, Math.PI / 2, true);
+
+    // Central tavern
+    this.createVillageHouse(0, -25, 0, true, true);
+
+    // Wooden dock
+    this.createVillageDock();
+
+    // Barrels and crates around village
+    this.createVillageProps();
+  }
+
+  createVillageHouse(x, z, rotation = 0, large = false, tavern = false) {
+    const group = new THREE.Group();
+
+    const width = large ? 10 : 7;
+    const height = large ? 6 : 4.5;
+    const depth = large ? 9 : 6;
+
+    const wood = new THREE.MeshStandardMaterial({
+      color: tavern ? 0x9b5930 : 0xc18a52,
+      roughness: 0.9
+    });
+
+    const roofMaterial = new THREE.MeshStandardMaterial({
+      color: tavern ? 0x71352a : 0x8b3d2d,
+      roughness: 1
+    });
+
+    // House body
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      wood
+    );
+
+    body.position.y = height / 2;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // Roof
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(width * 0.82, 3.5, 4),
+      roofMaterial
+    );
+
+    roof.position.y = height + 1.5;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    group.add(roof);
+
+    // Door
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 2.7, 0.2),
+      new THREE.MeshStandardMaterial({
+        color: 0x49301f
+      })
+    );
+
+    door.position.set(0, 1.35, depth / 2 + 0.12);
+    group.add(door);
+
+    // Windows
+    const windowMaterial = new THREE.MeshStandardMaterial({
+      color: 0x75c9e8,
+      roughness: 0.3
+    });
+
+    [-width / 3, width / 3].forEach(wx => {
+      const window = new THREE.Mesh(
+        new THREE.BoxGeometry(1.3, 1.3, 0.2),
+        windowMaterial
+      );
+
+      window.position.set(wx, height * 0.65, depth / 2 + 0.13);
+      group.add(window);
+    });
+
+    // Tavern sign
+    if (tavern) {
+      const sign = new THREE.Mesh(
+        new THREE.BoxGeometry(3.5, 1, 0.2),
+        new THREE.MeshStandardMaterial({
+          color: 0xf0c36d
+        })
+      );
+
+      sign.position.set(0, height + 0.2, depth / 2 + 0.2);
+      group.add(sign);
+    }
+
+    group.position.set(x, 2.3, z);
+    group.rotation.y = rotation;
+
+    group.traverse(obj => {
+      if (obj.isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+
+    this.scene.add(group);
+  }
+
+  createVillageDock() {
+    const dock = new THREE.Group();
+
+    const wood = new THREE.MeshStandardMaterial({
+      color: 0x80502e,
+      roughness: 0.9
+    });
+
+    // Main walkway
+    const walkway = new THREE.Mesh(
+      new THREE.BoxGeometry(9, 0.5, 25),
+      wood
+    );
+
+    walkway.position.set(0, 0, 0);
+    dock.add(walkway);
+
+    // Individual wooden planks
+    for (let i = 0; i < 12; i++) {
+      const plank = new THREE.Mesh(
+        new THREE.BoxGeometry(9.2, 0.15, 1.7),
+        new THREE.MeshStandardMaterial({
+          color: i % 2 === 0 ? 0xa66b3f : 0x80502e
+        })
+      );
+
+      plank.position.set(0, 0.32, -11 + i * 2);
+      dock.add(plank);
+    }
+
+    // Support pillars
+    for (let x of [-3.5, 3.5]) {
+      for (let z of [-11, 0, 11]) {
+        const pillar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.35, 0.45, 4, 8),
+          wood
+        );
+
+        pillar.position.set(x, -1.5, z);
+        dock.add(pillar);
+      }
+    }
+
+    dock.position.set(5, 2.5, -38);
+    this.scene.add(dock);
+  }
+
+  createVillageProps() {
+    const barrelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x98602f
+    });
+
+    const crateMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8793f
+    });
+
+    const positions = [
+      [-11, -18],
+      [12, -18],
+      [-24, 2],
+      [25, 0],
+      [8, -29],
+      [-8, -29]
+    ];
+
+    positions.forEach((p, i) => {
+      const barrel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.65, 0.65, 1.5, 12),
+        barrelMaterial
+      );
+
+      barrel.position.set(p[0], 3.05, p[1]);
+      this.scene.add(barrel);
+
+      if (i % 2 === 0) {
+        const crate = new THREE.Mesh(
+          new THREE.BoxGeometry(1.5, 1.5, 1.5),
+          crateMaterial
+        );
+
+        crate.position.set(p[0] + 2, 3.05, p[1]);
+        this.scene.add(crate);
+      }
+    });
   }
 
   createClouds() {
