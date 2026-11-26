@@ -31,6 +31,10 @@ export class PlayerController {
     this.dodgeTimer = 0;
     this.cdDodge = 0;
     this.dodgeDirection = new THREE.Vector3();
+
+    this.animationTime = 0;
+    this.animationSpeed = 0;
+    this.animationState = 'idle';
   }
 
   healFull() {
@@ -46,6 +50,7 @@ export class PlayerController {
     if (this.hp === 0) {
       this.healFull();
       this.mesh.position.set(0, 2.3, 18);
+      this.velocity.set(0, 0, 0);
     }
   }
 
@@ -61,7 +66,10 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 4) {
+      if (
+        !e.dead &&
+        e.mesh.position.distanceTo(this.mesh.position) < 4
+      ) {
         e.takeDamage(22, fwd);
       }
     });
@@ -76,7 +84,12 @@ export class PlayerController {
       Math.cos(this.mesh.rotation.y)
     );
 
-    const right = new THREE.Vector3(forward.z, 0, -forward.x);
+    const right = new THREE.Vector3(
+      forward.z,
+      0,
+      -forward.x
+    );
+
     const direction = new THREE.Vector3();
 
     if (keys['KeyW'] || keys['ArrowUp']) {
@@ -122,7 +135,10 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 18) {
+      if (
+        !e.dead &&
+        e.mesh.position.distanceTo(this.mesh.position) < 18
+      ) {
         e.takeDamage(45, fwd);
       }
     });
@@ -142,13 +158,18 @@ export class PlayerController {
     );
 
     enemies.forEach(e => {
-      if (!e.dead && e.mesh.position.distanceTo(this.mesh.position) < 14) {
+      if (
+        !e.dead &&
+        e.mesh.position.distanceTo(this.mesh.position) < 14
+      ) {
         e.takeDamage(70, fwd);
       }
     });
   }
 
   update(dt, keys, world, isSailing, ship) {
+    this.animationTime += dt;
+
     this.cdPistol = Math.max(0, this.cdPistol - dt);
     this.cdGatling = Math.max(0, this.cdGatling - dt);
     this.cdDodge = Math.max(0, this.cdDodge - dt);
@@ -169,16 +190,28 @@ export class PlayerController {
         Math.cos(targetYaw - this.camYaw)
       ) * Math.min(1, dt * 6);
 
+      this.animationState = 'idle';
+      this.animationSpeed = 0;
+      this.updateAnimation();
+
       this.updateCamera(ship.mesh.position, 22);
       return;
     }
 
     const turnSpeed = 2.8;
+    const movingForward = keys['KeyW'] || keys['ArrowUp'];
+    const movingBackward = keys['KeyS'] || keys['ArrowDown'];
+    const moving = movingForward || movingBackward;
 
     if (this.dodgeTimer > 0) {
-      this.mesh.position.addScaledVector(this.dodgeDirection, 34 * dt);
+      this.mesh.position.addScaledVector(
+        this.dodgeDirection,
+        34 * dt
+      );
+
+      this.animationState = 'dodge';
+      this.animationSpeed = 1;
     } else {
-      // Turning: WASD and arrow keys
       if (keys['KeyA'] || keys['ArrowLeft']) {
         this.mesh.rotation.y += turnSpeed * dt;
       }
@@ -193,16 +226,19 @@ export class PlayerController {
         Math.cos(this.mesh.rotation.y)
       );
 
-      // Sprinting
       const sprinting =
         (keys['ShiftLeft'] || keys['ShiftRight']) &&
-        (keys['KeyW'] || keys['ArrowUp']) &&
+        movingForward &&
         this.stamina > 0;
 
       const speed = sprinting ? 24 : 14;
 
       if (sprinting) {
-        this.stamina = Math.max(0, this.stamina - 24 * dt);
+        this.stamina = Math.max(
+          0,
+          this.stamina - 24 * dt
+        );
+
         this.staminaRegenDelay = 0.8;
       } else {
         this.staminaRegenDelay = Math.max(
@@ -218,17 +254,29 @@ export class PlayerController {
         }
       }
 
-      // Forward and backward movement
-      if (keys['KeyW'] || keys['ArrowUp']) {
-        this.mesh.position.addScaledVector(fwd, speed * dt);
+      if (movingForward) {
+        this.mesh.position.addScaledVector(
+          fwd,
+          speed * dt
+        );
       }
 
-      if (keys['KeyS'] || keys['ArrowDown']) {
-        this.mesh.position.addScaledVector(fwd, -speed * 0.65 * dt);
+      if (movingBackward) {
+        this.mesh.position.addScaledVector(
+          fwd,
+          -speed * 0.65 * dt
+        );
+      }
+
+      if (moving) {
+        this.animationState = sprinting ? 'run' : 'walk';
+        this.animationSpeed = sprinting ? 1 : 0.58;
+      } else {
+        this.animationState = 'idle';
+        this.animationSpeed = 0;
       }
     }
 
-    // Camera follows behind Luffy
     const targetYaw = this.mesh.rotation.y;
 
     this.camYaw += Math.atan2(
@@ -236,7 +284,6 @@ export class PlayerController {
       Math.cos(targetYaw - this.camYaw)
     ) * Math.min(1, dt * 7);
 
-    // Jump
     if (keys['Space'] && this.isGrounded) {
       this.velocity.y = 18;
       this.isGrounded = false;
@@ -254,7 +301,23 @@ export class PlayerController {
       this.isGrounded = true;
     }
 
+    if (!this.isGrounded) {
+      this.animationState = 'jump';
+      this.animationSpeed = 0;
+    }
+
+    this.updateAnimation();
     this.updateCamera(this.mesh.position, 11);
+  }
+
+  updateAnimation() {
+    if (this.mesh.userData.animate) {
+      this.mesh.userData.animate(
+        this.animationTime,
+        this.animationSpeed,
+        this.animationState
+      );
+    }
   }
 
   updateCamera(t, d) {
@@ -267,6 +330,10 @@ export class PlayerController {
       0.2
     );
 
-    this.camera.lookAt(t.x, t.y + 2.2, t.z);
+    this.camera.lookAt(
+      t.x,
+      t.y + 2.2,
+      t.z
+    );
   }
 }
