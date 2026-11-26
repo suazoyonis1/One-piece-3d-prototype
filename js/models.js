@@ -12,37 +12,6 @@ function attachCustomGLTF(root, path, h) {
     root.clear(); root.add(m);
   });
 }
-
-const gltfLoader = new GLTFLoader();
-function attachCustomGLTF(root, path, targetHeight) {
-  gltfLoader.load(path, (gltf) => {
-    const m = gltf.scene;
-    const box = new THREE.Box3().setFromObject(m);
-    const s = targetHeight / (box.getSize(new THREE.Vector3()).y || 1);
-    m.scale.setScalar(s);
-    box.setFromObject(m);
-    const c = box.getCenter(new THREE.Vector3());
-    m.position.set(-c.x, -box.min.y, -c.z);
-    root.clear();
-    root.add(m);
-  });
-}
-
-const gltfLoader = new GLTFLoader();
-function attachCustomGLB(root, path, targetHeight) {
-  gltfLoader.load(path, (gltf) => {
-    const m = gltf.scene;
-    const box = new THREE.Box3().setFromObject(m);
-    const s = targetHeight / (box.getSize(new THREE.Vector3()).y || 1);
-    m.scale.setScalar(s);
-    box.setFromObject(m);
-    const c = box.getCenter(new THREE.Vector3());
-    m.position.set(-c.x, -box.min.y, -c.z);
-    root.clear(); root.add(m);
-  });
-}
-
-
 function createMaterial(color, roughness = 0.6) {
   return new THREE.MeshStandardMaterial({ color, roughness });
 }
