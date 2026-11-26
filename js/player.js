@@ -28,7 +28,14 @@ export class PlayerController {
   }
   update(dt, keys, world, isSailing, ship) {
     this.cdPistol = Math.max(0, this.cdPistol - dt); this.cdGatling = Math.max(0, this.cdGatling - dt); this.attackTimer = Math.max(0, this.attackTimer - dt);
-    if (isSailing) { this.mesh.position.copy(ship.mesh.position).add(new THREE.Vector3(0, 2.25, -2.5)); this.mesh.rotation.y = ship.mesh.rotation.y; this.updateCamera(ship.mesh.position, 22); return; }
+    if (isSailing) { this.mesh.position.copy(ship.mesh.position).add(new THREE.Vector3(0, 2.25, -2.5)); this.mesh.rotation.y = ship.mesh.rotation.y; 
+    // Smoothly align camera behind wherever Luffy or the ship is pointing
+    const targetYaw = (isSailing ? ship.mesh.rotation.y : this.mesh.rotation.y) + Math.PI;
+    const diff = Math.atan2(Math.sin(targetYaw - this.camYaw), Math.cos(targetYaw - this.camYaw));
+    if (isSailing || dir.lengthSq() > 0) {
+      this.camYaw += diff * Math.min(1, dt * 3.5);
+    }
+    const sYaw = ship.mesh.rotation.y + Math.PI; this.camYaw += Math.atan2(Math.sin(sYaw - this.camYaw), Math.cos(sYaw - this.camYaw)) * Math.min(1, dt * 3.5); this.updateCamera(ship.mesh.position, 22); return; }
     const dir = new THREE.Vector3(), fwd = new THREE.Vector3(Math.sin(this.camYaw), 0, Math.cos(this.camYaw)), right = new THREE.Vector3(Math.cos(this.camYaw), 0, -Math.sin(this.camYaw));
     if (keys['KeyW']) dir.add(fwd); if (keys['KeyS']) dir.sub(fwd); if (keys['KeyD']) dir.sub(right); if (keys['KeyA']) dir.add(right);
     if (dir.lengthSq() > 0) { dir.normalize(); this.mesh.position.addScaledVector(dir, (keys['ShiftLeft'] ? 24 : 14) * dt); this.mesh.rotation.y = Math.atan2(dir.x, dir.z); }
