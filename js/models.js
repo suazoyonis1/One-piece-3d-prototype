@@ -15,11 +15,13 @@ function sphere(parent, color, position, scale, segments = 20) {
     new THREE.SphereGeometry(1, segments, segments),
     mat(color)
   );
+
   mesh.position.set(...position);
   mesh.scale.set(...scale);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
@@ -40,13 +42,16 @@ function capsule(parent, color, start, end, radius, segments = 12) {
   );
 
   mesh.position.copy(a).add(b).multiplyScalar(0.5);
+
   mesh.quaternion.setFromUnitVectors(
     new THREE.Vector3(0, 1, 0),
     direction.normalize()
   );
+
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
 }
 
@@ -55,95 +60,13 @@ function cylinder(parent, color, radiusTop, radiusBottom, height, position) {
     new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 20),
     mat(color)
   );
+
   mesh.position.set(...position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+
   return mesh;
-}
-
-// Actual Sketchfab Luffy model
-function createLuffyMesh() {
-  const root = new THREE.Group();
-  const loader = new GLTFLoader();
-
-  let mixer = null;
-  let previousTime = null;
-
-  root.userData.loaded = false;
-
-  root.userData.animate = function(time = 0, speed = 0, state = 'idle') {
-    if (mixer) {
-      const delta = previousTime === null
-        ? 0
-        : Math.min(Math.max(time - previousTime, 0), 0.05);
-
-      mixer.update(delta);
-    }
-
-    previousTime = time;
-  };
-
-  loader.load(
-    './models/luffy/scene.gltf',
-
-    (gltf) => {
-      const model = gltf.scene;
-
-      const bounds = new THREE.Box3().setFromObject(model);
-      const size = bounds.getSize(new THREE.Vector3());
-      const center = bounds.getCenter(new THREE.Vector3());
-
-      const targetHeight = 2.8;
-      const scale = targetHeight / (size.y || 1);
-
-      model.scale.setScalar(scale);
-
-      model.position.set(
-        -center.x * scale,
-        -bounds.min.y * scale,
-        -center.z * scale
-      );
-
-      model.traverse((object) => {
-        if (object.isMesh) {
-          object.castShadow = true;
-          object.receiveShadow = true;
-        }
-      });
-
-      root.add(model);
-      root.userData.loaded = true;
-
-      if (gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(model);
-
-        const idleAnimation =
-          gltf.animations.find(animation =>
-            /idle|stand/i.test(animation.name)
-          ) || gltf.animations[0];
-
-        mixer.clipAction(idleAnimation).play();
-      }
-
-      console.log('Luffy model loaded successfully!');
-    },
-
-    (progress) => {
-      if (progress.total > 0) {
-        console.log(
-          'Loading Luffy:',
-          Math.round(progress.loaded / progress.total * 100) + '%'
-        );
-      }
-    },
-
-    (error) => {
-      console.error('Luffy model failed to load:', error);
-    }
-  );
-
-  return root;
 }
 
 function addFace(root, skinColor) {
@@ -182,15 +105,25 @@ function addStrawHat(root) {
 
   brim.position.y = 2.91;
   brim.castShadow = true;
+  brim.receiveShadow = true;
   root.add(brim);
 
   const crown = new THREE.Mesh(
-    new THREE.SphereGeometry(0.39, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.SphereGeometry(
+      0.39,
+      24,
+      16,
+      0,
+      Math.PI * 2,
+      0,
+      Math.PI / 2
+    ),
     mat(0xf4bd35)
   );
 
   crown.position.y = 2.92;
   crown.scale.y = 0.8;
+  crown.castShadow = true;
   root.add(crown);
 
   const band = new THREE.Mesh(
@@ -199,6 +132,7 @@ function addStrawHat(root) {
   );
 
   band.position.y = 2.98;
+  band.castShadow = true;
   root.add(band);
 }
 
@@ -229,12 +163,8 @@ function createLeg(parent, side, pants) {
   return leg;
 }
 
-export function createCharacterMesh(type) {
-  // Use the real downloaded model for Luffy
-  if (type === 'luffy') {
-    return createLuffyMesh();
-  }
-
+// Creates all procedural characters, including the Luffy fallback.
+function createProceduralCharacter(type) {
   const root = new THREE.Group();
 
   const pivot = new THREE.Group();
@@ -245,21 +175,61 @@ export function createCharacterMesh(type) {
   character.position.y = -1.55;
   pivot.add(character);
 
-  const cfg = {
-    zoro: { skin: 0xf1c27d, shirt: 0xf8fafc, pants: 0x14532d, hair: 0x16a34a },
-    nami: { skin: 0xf5cba7, shirt: 0x38bdf8, pants: 0x1d4ed8, hair: 0xf97316 },
-    sanji: { skin: 0xf1c27d, shirt: 0x111827, pants: 0x111827, hair: 0xfacc15 },
-    mayor: { skin: 0xe0ac69, shirt: 0x65a30d, pants: 0x78350f, hair: 0xe2e8f0 },
-    marine: { skin: 0xf1c27d, shirt: 0xf8fafc, pants: 0x1e3a8a, hair: 0x1f2937, cap: true },
-    morgan: { skin: 0xe0ac69, shirt: 0x1e293b, pants: 0x0f172a, hair: 0xfacc15, scale: 1.45 },
-    pirate: { skin: 0xd2996c, shirt: 0x7f1d1d, pants: 0x292524, hair: 0x111827 }
-  }[type] || {
-    skin: 0xf1c27d,
-    shirt: 0xf8fafc,
-    pants: 0x1e3a8a,
-    hair: 0x1f2937
+  const configs = {
+    luffy: {
+      skin: 0xf1c27d,
+      shirt: 0xdc2626,
+      pants: 0x1d4ed8,
+      hair: 0x171717,
+      hat: true
+    },
+    zoro: {
+      skin: 0xf1c27d,
+      shirt: 0xf8fafc,
+      pants: 0x14532d,
+      hair: 0x16a34a
+    },
+    nami: {
+      skin: 0xf5cba7,
+      shirt: 0x38bdf8,
+      pants: 0x1d4ed8,
+      hair: 0xf97316
+    },
+    sanji: {
+      skin: 0xf1c27d,
+      shirt: 0x111827,
+      pants: 0x111827,
+      hair: 0xfacc15
+    },
+    mayor: {
+      skin: 0xe0ac69,
+      shirt: 0x65a30d,
+      pants: 0x78350f,
+      hair: 0xe2e8f0
+    },
+    marine: {
+      skin: 0xf1c27d,
+      shirt: 0xf8fafc,
+      pants: 0x1e3a8a,
+      hair: 0x1f2937,
+      cap: true
+    },
+    morgan: {
+      skin: 0xe0ac69,
+      shirt: 0x1e293b,
+      pants: 0x0f172a,
+      hair: 0xfacc15,
+      scale: 1.45
+    },
+    pirate: {
+      skin: 0xd2996c,
+      shirt: 0x7f1d1d,
+      pants: 0x292524,
+      hair: 0x111827
+    }
   };
 
+  const cfg = configs[type] || configs.pirate;
   const { skin, shirt, pants, hair } = cfg;
 
   const body = new THREE.Group();
@@ -275,12 +245,25 @@ export function createCharacterMesh(type) {
 
   if (cfg.cap) {
     const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.36, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.SphereGeometry(
+        0.36,
+        20,
+        12,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI / 2
+      ),
       mat(0xffffff)
     );
 
     cap.position.y = 2.82;
+    cap.castShadow = true;
     body.add(cap);
+  }
+
+  if (cfg.hat) {
+    addStrawHat(body);
   }
 
   const leftArm = createArm(character, -1, skin, shirt);
@@ -288,7 +271,12 @@ export function createCharacterMesh(type) {
   const leftLeg = createLeg(character, -1, pants);
   const rightLeg = createLeg(character, 1, pants);
 
-  root.userData.animate = function(time = 0, speed = 0, state = 'idle', progress = 0) {
+  root.userData.animate = function(
+    time = 0,
+    speed = 0,
+    state = 'idle',
+    progress = 0
+  ) {
     const movement = THREE.MathUtils.clamp(speed, 0, 1);
     const running = state === 'run';
     const jumping = state === 'jump';
@@ -350,11 +338,13 @@ export function createCharacterMesh(type) {
 
       rightArm.rotation.x = rapid > 0 ? -1.65 : 0.35;
       leftArm.rotation.x = rapid < 0 ? -1.65 : 0.35;
+
       rightArm.rotation.z = -0.12;
       leftArm.rotation.z = 0.12;
 
       body.rotation.x = -0.12;
       body.rotation.y = Math.sin(time * 18) * 0.06;
+
       leftLeg.rotation.x = Math.sin(time * 18) * 0.12;
       rightLeg.rotation.x = -Math.sin(time * 18) * 0.12;
     }
@@ -390,7 +380,176 @@ export function createCharacterMesh(type) {
   };
 
   root.scale.setScalar(cfg.scale || 1);
+
   return root;
+}
+
+// Loads the real Luffy model, while keeping a visible fallback.
+function createLuffyMesh() {
+  const root = new THREE.Group();
+  const fallback = createProceduralCharacter('luffy');
+  const loader = new GLTFLoader();
+
+  root.add(fallback);
+  root.userData.loaded = false;
+  root.userData.loadFailed = false;
+
+  let mixer = null;
+  let activeAction = null;
+  let actions = {};
+  let previousTime = null;
+
+  function chooseAnimation(state) {
+    if (!mixer) return;
+
+    const patterns = {
+      idle: /idle|stand/i,
+      walk: /walk/i,
+      run: /run|sprint/i,
+      jump: /jump/i,
+      dodge: /roll|dodge/i,
+      pistol: /punch|attack/i,
+      gatling: /attack|punch|fight/i
+    };
+
+    const pattern = patterns[state] || patterns.idle;
+    const nextAction = actions[state] || actions.idle;
+
+    if (!nextAction) return;
+    if (activeAction === nextAction) return;
+
+    if (activeAction) {
+      activeAction.fadeOut(0.15);
+    }
+
+    nextAction.reset();
+    nextAction.fadeIn(0.15);
+    nextAction.play();
+
+    activeAction = nextAction;
+  }
+
+  root.userData.animate = function(
+    time = 0,
+    speed = 0,
+    state = 'idle',
+    progress = 0
+  ) {
+    if (!root.userData.loaded) {
+      fallback.userData.animate?.(time, speed, state, progress);
+      return;
+    }
+
+    if (mixer) {
+      const delta = previousTime === null
+        ? 0
+        : THREE.MathUtils.clamp(time - previousTime, 0, 0.05);
+
+      mixer.update(delta);
+      previousTime = time;
+
+      chooseAnimation(state);
+    }
+  };
+
+  loader.load(
+    './models/luffy/scene.gltf',
+
+    (gltf) => {
+      const model = gltf.scene;
+
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+
+      const targetHeight = 2.8;
+      const scale = targetHeight / (size.y || 1);
+
+      model.scale.setScalar(scale);
+
+      model.position.set(
+        -center.x * scale,
+        -bounds.min.y * scale,
+        -center.z * scale
+      );
+
+      model.traverse((object) => {
+        if (object.isMesh) {
+          object.castShadow = true;
+          object.receiveShadow = true;
+        }
+      });
+
+      root.remove(fallback);
+      root.add(model);
+      root.userData.loaded = true;
+
+      if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+
+        const idleClip =
+          gltf.animations.find(animation =>
+            /idle|stand/i.test(animation.name)
+          ) || gltf.animations[0];
+
+        actions.idle = mixer.clipAction(idleClip);
+
+        for (const animation of gltf.animations) {
+          const name = animation.name.toLowerCase();
+
+          if (/walk/.test(name)) {
+            actions.walk = mixer.clipAction(animation);
+          }
+
+          if (/run|sprint/.test(name)) {
+            actions.run = mixer.clipAction(animation);
+          }
+
+          if (/jump/.test(name)) {
+            actions.jump = mixer.clipAction(animation);
+          }
+
+          if (/roll|dodge/.test(name)) {
+            actions.dodge = mixer.clipAction(animation);
+          }
+
+          if (/punch|attack/.test(name)) {
+            actions.pistol = mixer.clipAction(animation);
+            actions.gatling = mixer.clipAction(animation);
+          }
+        }
+
+        activeAction = actions.idle;
+        activeAction.play();
+      }
+
+      console.log('Luffy model loaded successfully');
+    },
+
+    (progress) => {
+      if (progress.total > 0) {
+        console.log(
+          'Loading Luffy:',
+          Math.round(progress.loaded / progress.total * 100) + '%'
+        );
+      }
+    },
+
+    (error) => {
+      root.userData.loadFailed = true;
+      console.error('Luffy model failed to load. Using fallback:', error);
+    }
+  );
+
+  return root;
+}
+
+export function createCharacterMesh(type) {
+  if (type === 'luffy') {
+    return createLuffyMesh();
+  }
+
+  return createProceduralCharacter(type);
 }
 
 export function createGoingMerryMesh() {
@@ -400,32 +559,82 @@ export function createGoingMerryMesh() {
     new THREE.BoxGeometry(5.5, 2.2, 13),
     mat(0x92400e)
   );
+
   hull.position.y = 1.0;
 
   const deck = new THREE.Mesh(
     new THREE.BoxGeometry(5.1, 0.2, 12.6),
     mat(0xd97706)
   );
+
   deck.position.y = 2.15;
 
   const mast = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.28, 11, 12),
     mat(0x78350f)
   );
+
   mast.position.set(0, 7.2, 0.5);
 
   const sail = new THREE.Mesh(
     new THREE.BoxGeometry(6.2, 5.2, 0.15),
     mat(0xf8fafc)
   );
+
   sail.position.set(0, 8.2, 0.8);
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.85, 16, 16),
     mat(0xf8fafc)
   );
+
   head.position.set(0, 2.7, 7.2);
 
-  ship.add(hull, deck, mast, sail, head);
+  const figureHead = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 16, 12),
+    mat(0xf4bd35)
+  );
+
+  figureHead.position.set(0, 3.0, 7.75);
+
+  const railingMaterial = mat(0x78350f);
+
+  const railings = [];
+
+  for (const side of [-1, 1]) {
+    const railing = new THREE.Mesh(
+      new THREE.BoxGeometry(0.15, 0.65, 10),
+      railingMaterial
+    );
+
+    railing.position.set(side * 2.45, 2.55, 0);
+    railings.push(railing);
+  }
+
+  const rearRail = new THREE.Mesh(
+    new THREE.BoxGeometry(4.9, 0.65, 0.15),
+    railingMaterial
+  );
+
+  rearRail.position.set(0, 2.55, -5.9);
+
+  ship.add(
+    hull,
+    deck,
+    mast,
+    sail,
+    head,
+    figureHead,
+    ...railings,
+    rearRail
+  );
+
+  ship.traverse((object) => {
+    if (object.isMesh) {
+      object.castShadow = true;
+      object.receiveShadow = true;
+    }
+  });
+
   return ship;
 }
