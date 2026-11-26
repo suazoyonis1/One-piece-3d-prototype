@@ -1,8 +1,8 @@
 
 import * as THREE from 'three';
 
-// Generate detailed textures without needing external image files
-function createGroundTexture(baseColor, detailColors, repeat = 8) {
+// Procedural ground textures
+function createGroundTexture(baseColor, details, repeat = 8) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;
@@ -11,17 +11,16 @@ function createGroundTexture(baseColor, detailColors, repeat = 8) {
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, 512, 512);
 
-  for (let i = 0; i < 18000; i++) {
-    ctx.fillStyle = detailColors[
-      Math.floor(Math.random() * detailColors.length)
-    ];
-
+  for (let i = 0; i < 22000; i++) {
+    ctx.fillStyle = details[Math.floor(Math.random() * details.length)];
     ctx.globalAlpha = Math.random() * 0.45;
+
+    const size = Math.random() * 3 + 1;
     ctx.fillRect(
       Math.random() * 512,
       Math.random() * 512,
-      Math.random() * 3 + 1,
-      Math.random() * 3 + 1
+      size,
+      size
     );
   }
 
@@ -39,7 +38,7 @@ function createGroundTexture(baseColor, detailColors, repeat = 8) {
 
 const grassTexture = createGroundTexture(
   '#4b963e',
-  ['#387c32', '#6cae45', '#83b956', '#315f2d'],
+  ['#387c32', '#6cae45', '#83b956', '#315f2d', '#a1c96b'],
   7
 );
 
@@ -63,21 +62,19 @@ export class World {
     this.waterTime = 0;
     this.clouds = [];
 
-    // Sky and atmosphere
-    this.scene.background = new THREE.Color(0x8bc9e8);
-    this.scene.fog = new THREE.FogExp2(0x9bc9d8, 0.00065);
+    // Sky
+    this.scene.background = new THREE.Color(0x79c9ed);
+    this.scene.fog = new THREE.FogExp2(0xa4d9e8, 0.00055);
 
-    // Natural ambient lighting
+    // Natural lighting
     const ambient = new THREE.HemisphereLight(
       0xc7eaff,
       0x526b3b,
-      1.8
+      2
     );
     this.scene.add(ambient);
 
-    // Sunlight and shadows
     const sun = new THREE.DirectionalLight(0xffe6b5, 3);
-
     sun.position.set(120, 180, 100);
     sun.castShadow = true;
 
@@ -88,34 +85,30 @@ export class World {
     sun.shadow.camera.bottom = -350;
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 500;
-
     sun.shadow.bias = -0.0002;
     sun.shadow.normalBias = 0.03;
 
     this.scene.add(sun);
 
-    // Animated ocean
-    const wGeo = new THREE.PlaneGeometry(
-      2400,
-      2400,
-      80,
-      80
+    // Ocean
+    const waterGeometry = new THREE.PlaneGeometry(
+      2400, 2400, 120, 120
     );
 
-    wGeo.rotateX(-Math.PI / 2);
+    waterGeometry.rotateX(-Math.PI / 2);
 
-    this.waterPositions = wGeo.attributes.position.array.slice();
+    this.waterPositions =
+      waterGeometry.attributes.position.array.slice();
 
     this.oceanMesh = new THREE.Mesh(
-      wGeo,
+      waterGeometry,
       new THREE.MeshPhysicalMaterial({
-        color: 0x087eaa,
-        roughness: 0.2,
-        metalness: 0.05,
+        color: 0x159bc5,
+        roughness: 0.28,
+        metalness: 0.08,
         clearcoat: 1,
-        clearcoatRoughness: 0.15,
-        reflectivity: 0.7,
-        flatShading: false
+        clearcoatRoughness: 0.12,
+        reflectivity: 0.85
       })
     );
 
@@ -149,7 +142,7 @@ export class World {
       new THREE.Vector3(-230, 0, 260),
       36,
       0x38bdf8,
-      4.0
+      4
     );
 
     // Supply crates
@@ -157,7 +150,7 @@ export class World {
       new THREE.Vector3(14, 2.8, 6),
       new THREE.Vector3(-12, 2.8, 12),
       new THREE.Vector3(4, 2.8, 22)
-    ].forEach((p, idx) => {
+    ].forEach((position, index) => {
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(1.8, 1.8, 1.8),
         new THREE.MeshStandardMaterial({
@@ -167,12 +160,12 @@ export class World {
         })
       );
 
-      crate.position.copy(p);
+      crate.position.copy(position);
       crate.castShadow = true;
       crate.receiveShadow = true;
 
       crate.userData = {
-        id: idx,
+        id: index,
         collected: false
       };
 
@@ -246,8 +239,9 @@ export class World {
       trunk.castShadow = true;
       tree.add(trunk);
 
-      // Palm leaves
       for (let j = 0; j < 7; j++) {
+        const rotation = (j / 7) * Math.PI * 2;
+
         const leaf = new THREE.Mesh(
           new THREE.ConeGeometry(0.45, 5, 7),
           new THREE.MeshStandardMaterial({
@@ -255,8 +249,6 @@ export class World {
             roughness: 0.85
           })
         );
-
-        const rotation = (j / 7) * Math.PI * 2;
 
         leaf.position.set(
           Math.cos(rotation) * 1.5,
@@ -275,7 +267,7 @@ export class World {
       this.scene.add(tree);
     }
 
-    // Decorative rocks
+    // Rocks
     for (let i = 0; i < 12; i++) {
       const angle = Math.random() * Math.PI * 2;
       const distance = Math.random() * radius * 0.75;
@@ -305,19 +297,18 @@ export class World {
 
       rock.castShadow = true;
       rock.receiveShadow = true;
-
       this.scene.add(rock);
     }
 
-    // Small greenery
-    for (let i = 0; i < 18; i++) {
+    // Bushes
+    for (let i = 0; i < 24; i++) {
       const angle = Math.random() * Math.PI * 2;
       const distance = Math.random() * radius * 0.7;
 
       const bush = new THREE.Mesh(
-        new THREE.SphereGeometry(1.1, 10, 8),
+        new THREE.SphereGeometry(1.1, 12, 10),
         new THREE.MeshStandardMaterial({
-          color: 0x238b45,
+          color: [0x238b45, 0x347c36, 0x56a83d][i % 3],
           roughness: 1
         })
       );
@@ -330,15 +321,79 @@ export class World {
 
       bush.scale.set(1.2, 0.7, 1);
       bush.castShadow = true;
-
       this.scene.add(bush);
+    }
+
+    // Colorful flowers
+    const flowerColors = [
+      0xff4d6d,
+      0xffd166,
+      0xffffff,
+      0xc77dff,
+      0xff8c42
+    ];
+
+    for (let i = 0; i < 35; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * radius * 0.78;
+
+      const flower = new THREE.Group();
+
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.035, 0.045, 0.55, 6),
+        new THREE.MeshStandardMaterial({ color: 0x287a36 })
+      );
+
+      stem.position.y = 0.27;
+      flower.add(stem);
+
+      const color = flowerColors[
+        Math.floor(Math.random() * flowerColors.length)
+      ];
+
+      for (let j = 0; j < 5; j++) {
+        const angle2 = (j / 5) * Math.PI * 2;
+
+        const petal = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12, 10, 8),
+          new THREE.MeshStandardMaterial({
+            color,
+            roughness: 0.65
+          })
+        );
+
+        petal.position.set(
+          Math.cos(angle2) * 0.13,
+          0.58,
+          Math.sin(angle2) * 0.13
+        );
+
+        petal.scale.set(1, 0.65, 1);
+        flower.add(petal);
+      }
+
+      const centerDot = new THREE.Mesh(
+        new THREE.SphereGeometry(0.075, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0xffd700 })
+      );
+
+      centerDot.position.y = 0.59;
+      flower.add(centerDot);
+
+      flower.position.set(
+        center.x + Math.cos(angle) * distance,
+        groundY,
+        center.z + Math.sin(angle) * distance
+      );
+
+      this.scene.add(flower);
     }
   }
 
   createFooshaVillage() {
     const groundY = 2.3;
 
-    // Sandy beach
+    // Beach
     const beach = new THREE.Mesh(
       new THREE.TorusGeometry(45, 2.2, 8, 80),
       new THREE.MeshStandardMaterial({
@@ -351,10 +406,9 @@ export class World {
     beach.rotation.x = -Math.PI / 2;
     beach.position.y = groundY + 0.08;
     beach.receiveShadow = true;
-
     this.scene.add(beach);
 
-    // Village walking path
+    // Walking path
     const pathMaterial = new THREE.MeshStandardMaterial({
       map: sandTexture,
       color: 0xffffff,
@@ -367,23 +421,42 @@ export class World {
         pathMaterial
       );
 
-      path.position.set(
-        0,
-        groundY + 0.12,
-        9 - i * 4
-      );
-
+      path.position.set(0, groundY + 0.12, 9 - i * 4);
       path.receiveShadow = true;
       this.scene.add(path);
     }
 
-    // Village houses
+    // Stepping stones
+    const stoneMaterial = new THREE.MeshStandardMaterial({
+      color: 0xb8a58b,
+      roughness: 1
+    });
+
+    for (let i = 0; i < 24; i++) {
+      const stone = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(
+          0.35 + Math.random() * 0.25,
+          0
+        ),
+        stoneMaterial
+      );
+
+      stone.position.set(
+        (Math.random() - 0.5) * 5,
+        groundY + 0.2,
+        12 - Math.random() * 42
+      );
+
+      stone.scale.y = 0.25;
+      stone.rotation.y = Math.random() * Math.PI;
+      this.scene.add(stone);
+    }
+
+    // Houses
     this.createVillageHouse(-17, -12, 0, false);
     this.createVillageHouse(17, -12, Math.PI / 2, false);
     this.createVillageHouse(-19, 12, 0, false);
     this.createVillageHouse(19, 12, Math.PI / 2, true);
-
-    // Central tavern
     this.createVillageHouse(0, -25, 0, true, true);
 
     this.createVillageDock();
@@ -430,29 +503,57 @@ export class World {
     // Door
     const door = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 2.7, 0.2),
-      new THREE.MeshStandardMaterial({
-        color: 0x49301f
-      })
+      new THREE.MeshStandardMaterial({ color: 0x49301f })
     );
 
     door.position.set(0, 1.35, depth / 2 + 0.12);
     group.add(door);
 
-    // Windows
+    // Windows and frames
     const windowMaterial = new THREE.MeshStandardMaterial({
       color: 0x75c9e8,
       roughness: 0.3,
       metalness: 0.1
     });
 
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color: 0x6b3d24,
+      roughness: 0.9
+    });
+
     [-width / 3, width / 3].forEach(wx => {
+      const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(1.55, 1.55, 0.12),
+        frameMaterial
+      );
+
+      frame.position.set(wx, height * 0.65, depth / 2 + 0.08);
+      group.add(frame);
+
       const window = new THREE.Mesh(
         new THREE.BoxGeometry(1.3, 1.3, 0.2),
         windowMaterial
       );
 
-      window.position.set(wx, height * 0.65, depth / 2 + 0.13);
+      window.position.set(wx, height * 0.65, depth / 2 + 0.14);
       group.add(window);
+
+      // Window crossbars
+      const verticalBar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 1.3, 0.08),
+        frameMaterial
+      );
+
+      verticalBar.position.set(wx, height * 0.65, depth / 2 + 0.25);
+      group.add(verticalBar);
+
+      const horizontalBar = new THREE.Mesh(
+        new THREE.BoxGeometry(1.3, 0.08, 0.08),
+        frameMaterial
+      );
+
+      horizontalBar.position.set(wx, height * 0.65, depth / 2 + 0.25);
+      group.add(horizontalBar);
     });
 
     // Tavern sign
@@ -490,16 +591,14 @@ export class World {
       roughness: 0.9
     });
 
-    // Main walkway
     const walkway = new THREE.Mesh(
       new THREE.BoxGeometry(9, 0.5, 25),
       wood
     );
 
-    walkway.position.set(0, 0, 0);
     dock.add(walkway);
 
-    // Individual wooden planks
+    // Individual planks
     for (let i = 0; i < 12; i++) {
       const plank = new THREE.Mesh(
         new THREE.BoxGeometry(9.2, 0.15, 1.7),
@@ -511,8 +610,8 @@ export class World {
     }
 
     // Support pillars
-    for (let x of [-3.5, 3.5]) {
-      for (let z of [-11, 0, 11]) {
+    for (const x of [-3.5, 3.5]) {
+      for (const z of [-11, 0, 11]) {
         const pillar = new THREE.Mesh(
           new THREE.CylinderGeometry(0.35, 0.45, 4, 8),
           wood
@@ -619,18 +718,18 @@ export class World {
   }
 
   getIslandAt(pos) {
-    return this.islands.find(i =>
+    return this.islands.find(island =>
       Math.hypot(
-        pos.x - i.center.x,
-        pos.z - i.center.z
-      ) <= i.radius
+        pos.x - island.center.x,
+        pos.z - island.center.z
+      ) <= island.radius
     ) || null;
   }
 
   update(dt) {
     this.waterTime += dt;
 
-    // Ocean waves
+    // Animated ocean waves
     const positions = this.oceanMesh.geometry.attributes.position;
 
     for (let i = 0; i < positions.count; i++) {
@@ -638,8 +737,9 @@ export class World {
       const z = this.waterPositions[i * 3 + 2];
 
       const wave =
-        Math.sin(x * 0.025 + this.waterTime * 1.2) * 0.45 +
-        Math.cos(z * 0.035 + this.waterTime * 0.8) * 0.3;
+        Math.sin(x * 0.025 + this.waterTime * 1.4) * 0.5 +
+        Math.cos(z * 0.035 + this.waterTime) * 0.35 +
+        Math.sin((x + z) * 0.018 + this.waterTime * 0.7) * 0.2;
 
       positions.array[i * 3 + 1] =
         this.waterPositions[i * 3 + 1] + wave;
