@@ -3,21 +3,20 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ========================================
-// MATERIALS AND HELPERS
+// BASIC HELPERS
 // ========================================
 
-function mat(color, roughness = 0.7) {
+function makeMaterial(color, roughness = 0.75) {
   return new THREE.MeshStandardMaterial({
     color,
-    roughness,
-    metalness: 0
+    roughness
   });
 }
 
-function sphere(parent, color, position, scale, segments = 20) {
+function addSphere(parent, color, position, scale) {
   const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(1, segments, segments),
-    mat(color)
+    new THREE.SphereGeometry(1, 16, 12),
+    makeMaterial(color)
   );
 
   mesh.position.set(...position);
@@ -29,39 +28,10 @@ function sphere(parent, color, position, scale, segments = 20) {
   return mesh;
 }
 
-function capsule(parent, color, start, end, radius, segments = 12) {
-  const a = new THREE.Vector3(...start);
-  const b = new THREE.Vector3(...end);
-  const direction = new THREE.Vector3().subVectors(b, a);
-  const length = direction.length();
-
+function addBox(parent, color, position, scale) {
   const mesh = new THREE.Mesh(
-    new THREE.CapsuleGeometry(
-      radius,
-      Math.max(0.01, length - radius * 2),
-      5,
-      segments
-    ),
-    mat(color)
-  );
-
-  mesh.position.copy(a).add(b).multiplyScalar(0.5);
-  mesh.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    direction.normalize()
-  );
-
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-
-  return mesh;
-}
-
-function cylinder(parent, color, radiusTop, radiusBottom, height, position) {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 20),
-    mat(color)
+    new THREE.BoxGeometry(...scale),
+    makeMaterial(color)
   );
 
   mesh.position.set(...position);
@@ -73,335 +43,102 @@ function cylinder(parent, color, radiusTop, radiusBottom, height, position) {
 }
 
 // ========================================
-// CHARACTER FACE AND CLOTHING
+// PROCEDURAL CHARACTER FALLBACK
 // ========================================
 
-function addFace(root, skinColor) {
-  for (const x of [-0.16, 0.16]) {
-    sphere(root, 0xffffff, [x, 2.56, 0.305], [0.075, 0.09, 0.035], 12);
-    sphere(root, 0x171717, [x, 2.56, 0.338], [0.035, 0.055, 0.018], 12);
-    sphere(root, 0xffffff, [x - 0.012, 2.58, 0.355], [0.012, 0.015, 0.008], 8);
-  }
-
-  sphere(root, skinColor, [0, 2.43, 0.33], [0.055, 0.065, 0.07], 12);
-
-  const mouth = new THREE.Mesh(
-    new THREE.TorusGeometry(0.065, 0.012, 6, 16, Math.PI),
-    mat(0x6b3028)
-  );
-
-  mouth.position.set(0, 2.36, 0.31);
-  mouth.rotation.z = Math.PI;
-  root.add(mouth);
-}
-
-function addHair(root, color) {
-  sphere(root, color, [0, 2.77, -0.015], [0.39, 0.20, 0.37]);
-
-  for (let i = 0; i < 5; i++) {
-    const x = (i - 2) * 0.13;
-    sphere(root, color, [x, 2.68, 0.20], [0.12, 0.17, 0.13]);
-  }
-}
-
-function addStrawHat(root) {
-  const brim = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.66, 0.66, 0.075, 32),
-    mat(0xf4bd35)
-  );
-
-  brim.position.y = 2.91;
-  brim.castShadow = true;
-  brim.receiveShadow = true;
-  root.add(brim);
-
-  const crown = new THREE.Mesh(
-    new THREE.SphereGeometry(
-      0.39,
-      24,
-      16,
-      0,
-      Math.PI * 2,
-      0,
-      Math.PI / 2
-    ),
-    mat(0xf4bd35)
-  );
-
-  crown.position.y = 2.92;
-  crown.scale.y = 0.8;
-  crown.castShadow = true;
-  root.add(crown);
-
-  const band = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.395, 0.395, 0.09, 24),
-    mat(0xc62828)
-  );
-
-  band.position.y = 2.98;
-  band.castShadow = true;
-  root.add(band);
-}
-
-function createArm(parent, side, skin, shirt) {
-  const arm = new THREE.Group();
-  arm.position.set(side * 0.43, 1.98, 0);
-  parent.add(arm);
-
-  sphere(arm, shirt, [0, -0.08, 0], [0.19, 0.20, 0.18]);
-  capsule(arm, shirt, [0, -0.05, 0], [side * 0.06, -0.30, 0], 0.15);
-  capsule(arm, skin, [side * 0.06, -0.25, 0], [side * 0.12, -0.55, 0], 0.115);
-  capsule(arm, skin, [side * 0.12, -0.50, 0], [side * 0.18, -0.78, 0.02], 0.105);
-  sphere(arm, skin, [side * 0.18, -0.84, 0.03], [0.13, 0.14, 0.13]);
-
-  return arm;
-}
-
-function createLeg(parent, side, pants) {
-  const leg = new THREE.Group();
-  leg.position.set(side * 0.20, 1.05, 0);
-  parent.add(leg);
-
-  capsule(leg, pants, [0, 0, 0], [0, -0.40, 0], 0.16);
-  sphere(leg, pants, [0, -0.40, 0], [0.155, 0.16, 0.16]);
-  capsule(leg, pants, [0, -0.40, 0], [0, -0.82, 0], 0.13);
-  sphere(leg, 0x713f12, [0, -0.90, 0.10], [0.19, 0.13, 0.30]);
-
-  return leg;
-}
-
-// ========================================
-// PROCEDURAL CHARACTERS
-// ========================================
-
-function createProceduralCharacter(type) {
+function createProceduralCharacter(type = 'pirate') {
   const root = new THREE.Group();
 
-  const pivot = new THREE.Group();
-  pivot.position.y = 1.55;
-  root.add(pivot);
-
-  const character = new THREE.Group();
-  character.position.y = -1.55;
-  pivot.add(character);
-
-  const configs = {
-    luffy: {
-      skin: 0xf1c27d,
-      shirt: 0xdc2626,
-      pants: 0x1d4ed8,
-      hair: 0x171717,
-      hat: true
-    },
-
-    zoro: {
-      skin: 0xf1c27d,
-      shirt: 0xf8fafc,
-      pants: 0x14532d,
-      hair: 0x16a34a
-    },
-
-    nami: {
-      skin: 0xf5cba7,
-      shirt: 0x38bdf8,
-      pants: 0x1d4ed8,
-      hair: 0xf97316
-    },
-
-    sanji: {
-      skin: 0xf1c27d,
-      shirt: 0x111827,
-      pants: 0x111827,
-      hair: 0xfacc15
-    },
-
-    mayor: {
-      skin: 0xe0ac69,
-      shirt: 0x65a30d,
-      pants: 0x78350f,
-      hair: 0xe2e8f0
-    },
-
-    marine: {
-      skin: 0xf1c27d,
-      shirt: 0xf8fafc,
-      pants: 0x1e3a8a,
-      hair: 0x1f2937,
-      cap: true
-    },
-
-    morgan: {
-      skin: 0xe0ac69,
-      shirt: 0x1e293b,
-      pants: 0x0f172a,
-      hair: 0xfacc15,
-      scale: 1.45
-    },
-
-    pirate: {
-      skin: 0xd2996c,
-      shirt: 0x7f1d1d,
-      pants: 0x292524,
-      hair: 0x111827
-    }
+  const colors = {
+    luffy: [0xf1c27d, 0xdc2626, 0x1d4ed8, 0x171717],
+    zoro: [0xf1c27d, 0xf8fafc, 0x14532d, 0x16a34a],
+    nami: [0xf5cba7, 0x38bdf8, 0x1d4ed8, 0xf97316],
+    sanji: [0xf1c27d, 0x111827, 0x111827, 0xfacc15],
+    marine: [0xf1c27d, 0xffffff, 0x1e3a8a, 0x1f2937],
+    mayor: [0xe0ac69, 0x65a30d, 0x78350f, 0xe2e8f0],
+    morgan: [0xe0ac69, 0x1e293b, 0x0f172a, 0xfacc15],
+    pirate: [0xd2996c, 0x7f1d1d, 0x292524, 0x111827]
   };
 
-  const cfg = configs[type] || configs.pirate;
-  const { skin, shirt, pants, hair } = cfg;
+  const [skin, shirt, pants, hair] =
+    colors[type] || colors.pirate;
 
   const body = new THREE.Group();
-  character.add(body);
+  root.add(body);
 
-  cylinder(body, skin, 0.14, 0.15, 0.22, [0, 2.12, 0]);
-  sphere(body, shirt, [0, 1.65, 0], [0.43, 0.59, 0.29]);
-  sphere(body, pants, [0, 1.12, 0], [0.37, 0.20, 0.28]);
-  sphere(body, skin, [0, 2.48, 0], [0.34, 0.40, 0.31], 24);
+  addSphere(body, shirt, [0, 1.55, 0], [0.42, 0.55, 0.28]);
+  addSphere(body, pants, [0, 0.95, 0], [0.35, 0.22, 0.25]);
+  addSphere(body, skin, [0, 2.35, 0], [0.32, 0.38, 0.3]);
+  addSphere(body, hair, [0, 2.65, -0.02], [0.34, 0.2, 0.32]);
 
-  addFace(body, skin);
-  addHair(body, hair);
+  for (const x of [-0.12, 0.12]) {
+    addSphere(body, 0xffffff, [x, 2.39, 0.27], [0.055, 0.07, 0.035]);
+    addSphere(body, 0x111111, [x, 2.39, 0.30], [0.025, 0.04, 0.02]);
+  }
 
-  if (cfg.cap) {
-    const cap = new THREE.Mesh(
-      new THREE.SphereGeometry(
-        0.36,
-        20,
-        12,
-        0,
-        Math.PI * 2,
-        0,
-        Math.PI / 2
-      ),
-      mat(0xffffff)
+  if (type === 'luffy') {
+    const brim = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.62, 0.62, 0.07, 24),
+      makeMaterial(0xf4bd35)
     );
 
-    cap.position.y = 2.82;
-    cap.castShadow = true;
-    body.add(cap);
+    brim.position.y = 2.82;
+    body.add(brim);
+
+    const hat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.38, 0.28, 24),
+      makeMaterial(0xf4bd35)
+    );
+
+    hat.position.y = 2.96;
+    body.add(hat);
+
+    addBox(body, 0xc62828, [0, 2.87, 0], [0.65, 0.06, 0.65]);
   }
 
-  if (cfg.hat) {
-    addStrawHat(body);
+  const arms = [];
+  const legs = [];
+
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.48, 1.85, 0);
+    body.add(arm);
+
+    addSphere(arm, shirt, [0, -0.15, 0], [0.17, 0.25, 0.17]);
+    addSphere(arm, skin, [side * 0.04, -0.48, 0], [0.13, 0.3, 0.13]);
+
+    arms.push(arm);
+
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.19, 0.85, 0);
+    body.add(leg);
+
+    addSphere(leg, pants, [0, -0.22, 0], [0.16, 0.3, 0.16]);
+    addSphere(leg, pants, [0, -0.55, 0], [0.14, 0.25, 0.14]);
+    addSphere(leg, 0x713f12, [0, -0.78, 0.08], [0.18, 0.11, 0.25]);
+
+    legs.push(leg);
   }
 
-  const leftArm = createArm(character, -1, skin, shirt);
-  const rightArm = createArm(character, 1, skin, shirt);
-  const leftLeg = createLeg(character, -1, pants);
-  const rightLeg = createLeg(character, 1, pants);
+  root.userData.animate = (time = 0, speed = 0, state = 'idle') => {
+    const moving = state === 'walk' || state === 'run';
+    const swing = moving ? Math.sin(time * 10) * speed : 0;
 
-  root.userData.animate = function(
-    time = 0,
-    speed = 0,
-    state = 'idle',
-    progress = 0
-  ) {
-    const movement = THREE.MathUtils.clamp(speed, 0, 1);
-    const running = state === 'run';
-    const jumping = state === 'jump';
-    const dodging = state === 'dodge';
-    const pistol = state === 'pistol';
-    const gatling = state === 'gatling';
+    legs[0].rotation.x = swing;
+    legs[1].rotation.x = -swing;
+    arms[0].rotation.x = -swing * 0.7;
+    arms[1].rotation.x = swing * 0.7;
 
-    const swing = Math.sin(time * (running ? 13 : 8)) * movement;
-
-    pivot.rotation.set(0, 0, 0);
-    body.rotation.set(0, 0, 0);
-
-    leftArm.rotation.set(0, 0, 0);
-    rightArm.rotation.set(0, 0, 0);
-    leftLeg.rotation.set(0, 0, 0);
-    rightLeg.rotation.set(0, 0, 0);
-
-    body.position.y = Math.sin(time * 2.5) * 0.018;
-
-    if (state === 'walk' || running) {
-      leftLeg.rotation.x = swing * 0.8;
-      rightLeg.rotation.x = -swing * 0.8;
-      leftArm.rotation.x = -swing * 0.65;
-      rightArm.rotation.x = swing * 0.65;
-
-      if (running) {
-        body.rotation.x = -0.08;
-        body.position.y += Math.abs(swing) * 0.045;
-      }
-    }
-
-    if (pistol) {
-      const p = THREE.MathUtils.clamp(progress, 0, 1);
-
-      if (p < 0.30) {
-        const pull = p / 0.30;
-        rightArm.rotation.x = 0.85 * pull;
-        rightArm.rotation.z = -0.35 * pull;
-        body.rotation.y = -0.12 * pull;
-      } else if (p < 0.62) {
-        const punch = (p - 0.30) / 0.32;
-        rightArm.rotation.x = 0.85 - punch * 2.55;
-        rightArm.rotation.z = -0.35 + punch * 0.35;
-        body.rotation.y = -0.12 + punch * 0.25;
-        body.rotation.x = -0.10;
-      } else {
-        const recover = (p - 0.62) / 0.38;
-        rightArm.rotation.x = -1.70 * (1 - recover);
-        body.rotation.y = 0.13 * (1 - recover);
-      }
-
-      leftArm.rotation.x = 0.35;
-      leftLeg.rotation.x = -0.10;
-      rightLeg.rotation.x = 0.10;
-    }
-
-    if (gatling) {
-      const rapid = Math.sin(time * 42);
-
-      rightArm.rotation.x = rapid > 0 ? -1.65 : 0.35;
-      leftArm.rotation.x = rapid < 0 ? -1.65 : 0.35;
-
-      rightArm.rotation.z = -0.12;
-      leftArm.rotation.z = 0.12;
-
-      body.rotation.x = -0.12;
-      body.rotation.y = Math.sin(time * 18) * 0.06;
-      leftLeg.rotation.x = Math.sin(time * 18) * 0.12;
-      rightLeg.rotation.x = -Math.sin(time * 18) * 0.12;
-    }
-
-    if (jumping) {
-      leftArm.rotation.x = -1.1;
-      rightArm.rotation.x = -1.1;
-      leftArm.rotation.z = -0.25;
-      rightArm.rotation.z = 0.25;
-      leftLeg.rotation.x = -0.55;
-      rightLeg.rotation.x = -0.55;
-      body.rotation.x = -0.08;
-    }
-
-    if (dodging) {
-      const p = THREE.MathUtils.clamp(progress, 0, 1);
-      const eased = p * p * (3 - 2 * p);
-
-      pivot.rotation.x = Math.PI * 2 * eased;
-
-      leftArm.rotation.x = -0.65;
-      rightArm.rotation.x = -0.65;
-      leftArm.rotation.z = -0.35;
-      rightArm.rotation.z = 0.35;
-      leftLeg.rotation.x = 0.35;
-      rightLeg.rotation.x = 0.35;
-    }
-
-    if (state === 'idle') {
-      leftArm.rotation.z = Math.sin(time * 2) * 0.025;
-      rightArm.rotation.z = -Math.sin(time * 2) * 0.025;
-    }
+    body.position.y = state === 'idle'
+      ? Math.sin(time * 2) * 0.02
+      : 0;
   };
-
-  root.scale.setScalar(cfg.scale || 1);
 
   return root;
 }
 
 // ========================================
-// REAL LUFFY MODEL LOADER
+// LUFFY SKELETON ANIMATION
 // ========================================
 
 function createLuffyMesh() {
@@ -409,49 +146,219 @@ function createLuffyMesh() {
   const fallback = createProceduralCharacter('luffy');
 
   root.add(fallback);
+
   root.userData.loaded = false;
   root.userData.loadFailed = false;
 
-  let mixer = null;
-  let activeAction = null;
-  const actions = {};
-  let previousTime = null;
-
-  // Fix the texture folder mismatch:
-  // scene.gltf says "textures/"
-  // GitHub folder is actually "texture/"
   const manager = new THREE.LoadingManager();
 
+  // Your GitHub folder is named "texture", not "textures".
   manager.setURLModifier((url) => {
-    return url.replace(/(^|\/)textures\//, '$1texture/');
+    return url.replace(/\/textures\//g, '/texture/');
   });
 
   const loader = new GLTFLoader(manager);
 
-  function chooseAnimation(state) {
-    if (!mixer) return;
+  let mixer = null;
+  let previousTime = null;
+  let bones = {};
 
-    const nextAction = actions[state] || actions.idle;
+  function findBone(model, pattern) {
+    let found = null;
 
-    if (!nextAction || activeAction === nextAction) return;
+    model.traverse((object) => {
+      if (
+        object.isBone &&
+        pattern.test(object.name)
+      ) {
+        found = object;
+      }
+    });
 
-    if (activeAction) {
-      activeAction.fadeOut(0.15);
-    }
-
-    nextAction.reset();
-    nextAction.fadeIn(0.15);
-    nextAction.play();
-
-    activeAction = nextAction;
+    return found;
   }
 
-  root.userData.animate = function(
+  function saveBone(bone) {
+    if (!bone) return null;
+
+    return {
+      bone,
+      original: bone.quaternion.clone()
+    };
+  }
+
+  function rotateBone(saved, axis, amount) {
+    if (!saved) return;
+
+    const offset = new THREE.Quaternion()
+      .setFromAxisAngle(axis, amount);
+
+    saved.bone.quaternion
+      .copy(saved.original)
+      .multiply(offset);
+  }
+
+  function setupBones(model) {
+    // Luffy's actual bone names from scene.gltf
+    bones.leftThigh = saveBone(
+      findBone(model, /thigh\.L_/i)
+    );
+
+    bones.rightThigh = saveBone(
+      findBone(model, /thigh\.R_/i)
+    );
+
+    bones.leftKnee = saveBone(
+      findBone(model, /knee\.L_/i)
+    );
+
+    bones.rightKnee = saveBone(
+      findBone(model, /knee\.R_/i)
+    );
+
+    bones.leftShoulder = saveBone(
+      findBone(model, /shoulder 1\.L_/i)
+    );
+
+    bones.rightShoulder = saveBone(
+      findBone(model, /shoulder 1\.R_/i)
+    );
+
+    bones.leftElbow = saveBone(
+      findBone(model, /elbow\.L_/i)
+    );
+
+    bones.rightElbow = saveBone(
+      findBone(model, /elbow\.R_/i)
+    );
+
+    bones.spine = saveBone(
+      findBone(model, /spine upper_/i)
+    );
+
+    console.log(
+      'Luffy skeleton bones:',
+      Object.keys(bones).filter(key => bones[key])
+    );
+  }
+
+  function animateSkeleton(time, state, speed, progress) {
+    const moving = state === 'walk' || state === 'run';
+    const running = state === 'run';
+
+    const stride = running ? 11 : 8;
+    const amount = moving ? Math.sin(time * stride) : 0;
+    const strength = moving ? (running ? 0.85 : 0.55) : 0;
+
+    // Legs move opposite each other
+    rotateBone(
+      bones.leftThigh,
+      new THREE.Vector3(1, 0, 0),
+      amount * strength
+    );
+
+    rotateBone(
+      bones.rightThigh,
+      new THREE.Vector3(1, 0, 0),
+      -amount * strength
+    );
+
+    // Knees bend during the step
+    const kneeBend = moving
+      ? Math.max(0, Math.sin(time * stride + Math.PI / 2)) * 0.55
+      : 0;
+
+    rotateBone(
+      bones.leftKnee,
+      new THREE.Vector3(1, 0, 0),
+      kneeBend
+    );
+
+    rotateBone(
+      bones.rightKnee,
+      new THREE.Vector3(1, 0, 0),
+      Math.max(0, Math.sin(time * stride - Math.PI / 2)) * 0.55
+    );
+
+    // Arms swing opposite the legs
+    rotateBone(
+      bones.leftShoulder,
+      new THREE.Vector3(0, 1, 0),
+      -amount * strength * 0.75
+    );
+
+    rotateBone(
+      bones.rightShoulder,
+      new THREE.Vector3(0, 1, 0),
+      amount * strength * 0.75
+    );
+
+    // Slight elbow bend
+    rotateBone(
+      bones.leftElbow,
+      new THREE.Vector3(1, 0, 0),
+      moving ? 0.25 + Math.max(0, amount) * 0.2 : 0
+    );
+
+    rotateBone(
+      bones.rightElbow,
+      new THREE.Vector3(1, 0, 0),
+      moving ? 0.25 + Math.max(0, -amount) * 0.2 : 0
+    );
+
+    // Body movement
+    rotateBone(
+      bones.spine,
+      new THREE.Vector3(1, 0, 0),
+      moving ? -0.06 : 0
+    );
+
+    if (state === 'jump') {
+      rotateBone(bones.leftThigh, new THREE.Vector3(1, 0, 0), -0.55);
+      rotateBone(bones.rightThigh, new THREE.Vector3(1, 0, 0), -0.55);
+      rotateBone(bones.leftShoulder, new THREE.Vector3(0, 1, 0), -0.65);
+      rotateBone(bones.rightShoulder, new THREE.Vector3(0, 1, 0), 0.65);
+    }
+
+    if (state === 'pistol') {
+      const punch = Math.sin(Math.PI * Math.min(1, progress));
+
+      rotateBone(
+        bones.rightShoulder,
+        new THREE.Vector3(0, 1, 0),
+        1.1 * punch
+      );
+
+      rotateBone(
+        bones.rightElbow,
+        new THREE.Vector3(1, 0, 0),
+        -0.3 * punch
+      );
+    }
+
+    if (state === 'gatling') {
+      const rapid = Math.sin(time * 35);
+
+      rotateBone(
+        bones.leftShoulder,
+        new THREE.Vector3(0, 1, 0),
+        rapid * 0.8
+      );
+
+      rotateBone(
+        bones.rightShoulder,
+        new THREE.Vector3(0, 1, 0),
+        -rapid * 0.8
+      );
+    }
+  }
+
+  root.userData.animate = (
     time = 0,
     speed = 0,
     state = 'idle',
     progress = 0
-  ) {
+  ) => {
     if (!root.userData.loaded) {
       fallback.userData.animate?.(time, speed, state, progress);
       return;
@@ -464,12 +371,11 @@ function createLuffyMesh() {
 
       mixer.update(delta);
       previousTime = time;
-
-      chooseAnimation(state);
     }
+
+    animateSkeleton(time, state, speed, progress);
   };
 
-  // IMPORTANT: exact GitHub folder capitalization
   loader.load(
     './models/Luffy/scene.gltf',
 
@@ -480,8 +386,7 @@ function createLuffyMesh() {
       const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
 
-      const targetHeight = 2.8;
-      const scale = targetHeight / (size.y || 1);
+      const scale = 2.8 / (size.y || 1);
 
       model.scale.setScalar(scale);
 
@@ -498,69 +403,35 @@ function createLuffyMesh() {
         }
       });
 
+      setupBones(model);
+
       root.remove(fallback);
       root.add(model);
 
       root.userData.loaded = true;
 
+      // Your model includes a blink animation.
+      // Keep it playing while the skeleton handles walking.
       if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(model);
 
-        const idleClip =
-          gltf.animations.find(animation =>
-            /idle|stand|blink/i.test(animation.name)
-          ) || gltf.animations[0];
-
-        actions.idle = mixer.clipAction(idleClip);
-
-        for (const animation of gltf.animations) {
-          const name = animation.name.toLowerCase();
-
-          if (/walk/.test(name)) {
-            actions.walk = mixer.clipAction(animation);
-          }
-
-          if (/run|sprint/.test(name)) {
-            actions.run = mixer.clipAction(animation);
-          }
-
-          if (/jump/.test(name)) {
-            actions.jump = mixer.clipAction(animation);
-          }
-
-          if (/roll|dodge/.test(name)) {
-            actions.dodge = mixer.clipAction(animation);
-          }
-
-          if (/punch|attack/.test(name)) {
-            actions.pistol = mixer.clipAction(animation);
-            actions.gatling = mixer.clipAction(animation);
-          }
-        }
-
-        activeAction = actions.idle;
-        activeAction.play();
-      }
-
-      console.log('Luffy model loaded successfully');
-    },
-
-    (progress) => {
-      if (progress.total > 0) {
-        console.log(
-          'Loading Luffy:',
-          Math.round(progress.loaded / progress.total * 100) + '%'
+        const blink = gltf.animations.find(
+          animation => /blink/i.test(animation.name)
         );
+
+        if (blink) {
+          mixer.clipAction(blink).play();
+        }
       }
+
+      console.log('Luffy model and skeleton loaded');
     },
+
+    undefined,
 
     (error) => {
       root.userData.loadFailed = true;
-
-      console.error(
-        'Luffy model failed to load. Using fallback:',
-        error
-      );
+      console.error('Luffy model failed to load:', error);
     }
   );
 
@@ -571,7 +442,7 @@ function createLuffyMesh() {
 // CHARACTER EXPORT
 // ========================================
 
-export function createCharacterMesh(type) {
+export function createCharacterMesh(type = 'pirate') {
   if (type === 'luffy') {
     return createLuffyMesh();
   }
@@ -580,55 +451,59 @@ export function createCharacterMesh(type) {
 }
 
 // ========================================
-// GOING MERRY SHIP
+// GOING MERRY
 // ========================================
 
 export function createGoingMerryMesh() {
   const ship = new THREE.Group();
 
+  const wood = makeMaterial(0x92400e);
+  const deckMaterial = makeMaterial(0xd97706);
+  const white = makeMaterial(0xf8fafc);
+
   const hull = new THREE.Mesh(
     new THREE.BoxGeometry(5.5, 2.2, 13),
-    mat(0x92400e)
+    wood
   );
 
-  hull.position.y = 1.0;
+  hull.position.y = 1;
 
   const deck = new THREE.Mesh(
     new THREE.BoxGeometry(5.1, 0.2, 12.6),
-    mat(0xd97706)
+    deckMaterial
   );
 
   deck.position.y = 2.15;
 
   const mast = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.28, 11, 12),
-    mat(0x78350f)
+    wood
   );
 
   mast.position.set(0, 7.2, 0.5);
 
   const sail = new THREE.Mesh(
     new THREE.BoxGeometry(6.2, 5.2, 0.15),
-    mat(0xf8fafc)
+    white
   );
 
   sail.position.set(0, 8.2, 0.8);
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.85, 16, 16),
-    mat(0xf8fafc)
+    white
   );
 
   head.position.set(0, 2.7, 7.2);
 
   const figureHead = new THREE.Mesh(
     new THREE.SphereGeometry(0.35, 16, 12),
-    mat(0xf4bd35)
+    makeMaterial(0xf4bd35)
   );
 
-  figureHead.position.set(0, 3.0, 7.75);
+  figureHead.position.set(0, 3, 7.75);
 
-  const railingMaterial = mat(0x78350f);
+  const railingMaterial = makeMaterial(0x78350f);
   const railings = [];
 
   for (const side of [-1, 1]) {
