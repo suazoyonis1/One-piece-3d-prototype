@@ -4,6 +4,10 @@ import { createCharacterMesh } from './models.js';
 
 export class PlayerController {
   constructor(scene, camera) {
+    if (!scene || !camera) {
+      throw new Error('PlayerController requires a scene and camera');
+    }
+
     this.scene = scene;
     this.camera = camera;
 
@@ -17,28 +21,33 @@ export class PlayerController {
     this.mesh.position.set(0, 2.3, 18);
     this.scene.add(this.mesh);
 
-    // Health and stamina
+    // Health
     this.hp = 100;
     this.maxHp = 100;
 
+    // Stamina
     this.stamina = 100;
     this.maxStamina = 100;
-
-    this.berries = 500;
-
     this.staminaRegenDelay = 0;
+
+    // Currency
+    this.berries = 500;
 
     // Physics
     this.velocity = new THREE.Vector3();
     this.isGrounded = true;
     this.gravity = 45;
     this.jumpForce = 18;
+    this.jumpWasDown = false;
 
     // Movement
     this.walkSpeed = 14;
     this.sprintSpeed = 24;
     this.backwardSpeed = 0.65;
     this.turnSpeed = 2.8;
+
+    // Safe ground position
+    this.lastSafePosition = new THREE.Vector3(0, 2.3, 18);
 
     // Camera
     this.camYaw = Math.PI;
@@ -48,7 +57,6 @@ export class PlayerController {
 
     // Combat
     this.attackTimer = 0;
-
     this.cdPistol = 0;
     this.cdGatling = 0;
 
@@ -56,7 +64,6 @@ export class PlayerController {
     this.dodgeTimer = 0;
     this.dodgeDuration = 0.42;
     this.cdDodge = 0;
-
     this.dodgeDirection = new THREE.Vector3();
 
     // Animation
@@ -75,6 +82,7 @@ export class PlayerController {
     this.right = new THREE.Vector3();
     this.cameraTarget = new THREE.Vector3();
     this.cameraPosition = new THREE.Vector3();
+    this.shipOffset = new THREE.Vector3(0, 2.25, -2.5);
   }
 
   getForward() {
@@ -89,10 +97,16 @@ export class PlayerController {
     this.hp = this.maxHp;
     this.stamina = this.maxStamina;
     this.velocity.set(0, 0, 0);
+    this.staminaRegenDelay = 0;
   }
 
   takeDamage(amount) {
-    if (this.dodgeTimer > 0 || this.hp <= 0) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      this.dodgeTimer > 0 ||
+      this.hp <= 0
+    ) {
       return;
     }
 
@@ -103,20 +117,40 @@ export class PlayerController {
     );
 
     if (this.hp <= 0) {
-      this.healFull();
-
-      this.mesh.position.set(0, 2.3, 18);
-      this.mesh.rotation.y = Math.PI;
-
-      this.isGrounded = true;
-      this.dodgeTimer = 0;
-
-      this.animationState = 'idle';
+      this.respawn();
     }
   }
 
+  respawn() {
+    this.healFull();
+
+    this.mesh.position.set(0, 2.3, 18);
+    this.mesh.rotation.y = Math.PI;
+
+    this.lastSafePosition.set(0, 2.3, 18);
+
+    this.isGrounded = true;
+    this.dodgeTimer = 0;
+    this.attackTimer = 0;
+
+    this.cdPistol = 0;
+    this.cdGatling = 0;
+    this.cdDodge = 0;
+
+    this.pistolAnimTimer = 0;
+    this.gatlingAnimTimer = 0;
+
+    this.animationState = 'idle';
+    this.animationSpeed = 0;
+  }
+
   canHitEnemy(enemy, range, minDot = -0.1) {
-    if (!enemy || enemy.dead || !enemy.mesh) {
+    if (
+      !enemy ||
+      enemy.dead ||
+      !enemy.mesh ||
+      !enemy.mesh.position
+    ) {
       return false;
     }
 
@@ -142,8 +176,13 @@ export class PlayerController {
     return this.getForward().dot(offset) >= minDot;
   }
 
-  performMeleeCombo(enemies) {
-    if (this.attackTimer > 0 || this.dodgeTimer > 0) {
+  performMeleeCombo(enemies = []) {
+    if (
+      this.attackTimer > 0 ||
+      this.dodgeTimer > 0 ||
+      this.pistolAnimTimer > 0 ||
+      this.gatlingAnimTimer > 0
+    ) {
       return;
     }
 
@@ -158,7 +197,7 @@ export class PlayerController {
     });
   }
 
-  dodge(keys) {
+  dodge(keys = {}) {
     if (
       this.cdDodge > 0 ||
       this.stamina < 22 ||
@@ -206,11 +245,12 @@ export class PlayerController {
     this.staminaRegenDelay = 0.8;
   }
 
-  useGomuPistol(enemies) {
+  useGomuPistol(enemies = []) {
     if (
       this.cdPistol > 0 ||
       this.stamina < 20 ||
-      this.dodgeTimer > 0
+      this.dodgeTimer > 0 ||
+      this.gatlingAnimTimer > 0
     ) {
       return;
     }
@@ -219,7 +259,6 @@ export class PlayerController {
     this.staminaRegenDelay = 0.8;
 
     this.cdPistol = 2.5;
-
     this.pistolAnimTimer = this.pistolAnimDuration;
     this.gatlingAnimTimer = 0;
 
@@ -232,11 +271,12 @@ export class PlayerController {
     });
   }
 
-  useGomuGatling(enemies) {
+  useGomuGatling(enemies = []) {
     if (
       this.cdGatling > 0 ||
       this.stamina < 35 ||
-      this.dodgeTimer > 0
+      this.dodgeTimer > 0 ||
+      this.pistolAnimTimer > 0
     ) {
       return;
     }
@@ -245,7 +285,6 @@ export class PlayerController {
     this.staminaRegenDelay = 0.8;
 
     this.cdGatling = 5;
-
     this.gatlingAnimTimer = this.gatlingAnimDuration;
     this.pistolAnimTimer = 0;
 
@@ -301,37 +340,92 @@ export class PlayerController {
     }
   }
 
-  update(dt, keys, world, isSailing, ship) {
-    this.animationTime += dt;
+  updateGround(world) {
+    if (!world || typeof world.getIslandAt !== 'function') {
+      return;
+    }
 
+    const island = world.getIslandAt(this.mesh.position);
+
+    // Prevent walking or falling off an island into the ocean.
+    if (!island) {
+      this.mesh.position.x = this.lastSafePosition.x;
+      this.mesh.position.z = this.lastSafePosition.z;
+
+      if (this.mesh.position.y < this.lastSafePosition.y) {
+        this.mesh.position.y = this.lastSafePosition.y;
+        this.velocity.y = 0;
+        this.isGrounded = true;
+      }
+
+      return;
+    }
+
+    const floorY = island.groundY;
+
+    if (this.mesh.position.y <= floorY) {
+      this.mesh.position.y = floorY;
+      this.velocity.y = 0;
+      this.isGrounded = true;
+
+      this.lastSafePosition.set(
+        this.mesh.position.x,
+        floorY,
+        this.mesh.position.z
+      );
+    } else {
+      this.isGrounded = false;
+    }
+  }
+
+  update(dt, keys = {}, world, isSailing = false, ship) {
+    dt = THREE.MathUtils.clamp(dt || 0, 0, 0.05);
+
+    this.animationTime += dt;
     this.updateCooldowns(dt);
 
-    // Sailing mode
+    // Sailing
     if (isSailing) {
-      this.mesh.position.copy(ship.mesh.position);
+      if (!ship || !ship.mesh) {
+        return;
+      }
 
-      this.mesh.position.add(
-        new THREE.Vector3(0, 2.25, -2.5)
-      );
+      this.mesh.position
+        .copy(ship.mesh.position)
+        .add(this.shipOffset);
 
       this.mesh.rotation.y = ship.mesh.rotation.y;
 
       const targetYaw = ship.mesh.rotation.y + Math.PI;
 
-      this.camYaw += THREE.MathUtils.euclideanModulo(
-        targetYaw - this.camYaw + Math.PI,
-        Math.PI * 2
-      ) - Math.PI;
+      const yawDifference = Math.atan2(
+        Math.sin(targetYaw - this.camYaw),
+        Math.cos(targetYaw - this.camYaw)
+      );
+
+      this.camYaw += yawDifference * (
+        1 - Math.exp(-7 * dt)
+      );
 
       this.animationState = 'idle';
       this.animationSpeed = 0;
 
       this.updateAnimation();
 
-      this.updateCamera(ship.mesh.position, 22, dt);
+      this.updateCamera(
+        ship.mesh.position,
+        22,
+        dt
+      );
 
       return;
     }
+
+    // Jump input only triggers once per key press.
+    const jumpDown = !!keys['Space'];
+    const jumpPressed = jumpDown && !this.jumpWasDown;
+
+    this.jumpWasDown = jumpDown;
 
     // Movement input
     const movingForward =
@@ -344,6 +438,7 @@ export class PlayerController {
 
     let sprinting = false;
 
+    // Dodge movement
     if (this.dodgeTimer > 0) {
       this.mesh.position.addScaledVector(
         this.dodgeDirection,
@@ -352,7 +447,6 @@ export class PlayerController {
 
       this.animationState = 'dodge';
       this.animationSpeed = 0;
-
     } else {
       // Turning
       if (keys['KeyA'] || keys['ArrowLeft']) {
@@ -365,35 +459,42 @@ export class PlayerController {
 
       const forward = this.getForward();
 
-      sprinting =
-        (keys['ShiftLeft'] || keys['ShiftRight']) &&
-        movingForward &&
-        this.stamina > 0;
+      const actionLocked =
+        this.attackTimer > 0 ||
+        this.pistolAnimTimer > 0 ||
+        this.gatlingAnimTimer > 0;
 
-      const speed = sprinting
-        ? this.sprintSpeed
-        : this.walkSpeed;
+      if (!actionLocked) {
+        sprinting =
+          (keys['ShiftLeft'] || keys['ShiftRight']) &&
+          movingForward &&
+          this.stamina > 0;
 
-      if (movingForward) {
-        this.mesh.position.addScaledVector(
-          forward,
-          speed * dt
-        );
+        const speed = sprinting
+          ? this.sprintSpeed
+          : this.walkSpeed;
+
+        if (movingForward) {
+          this.mesh.position.addScaledVector(
+            forward,
+            speed * dt
+          );
+        }
+
+        if (movingBackward) {
+          this.mesh.position.addScaledVector(
+            forward,
+            -speed * this.backwardSpeed * dt
+          );
+        }
       }
 
-      if (movingBackward) {
-        this.mesh.position.addScaledVector(
-          forward,
-          -speed * this.backwardSpeed * dt
-        );
-      }
-
-      // Movement animations
-      if (moving) {
+      if (actionLocked) {
+        this.animationSpeed = 0;
+        this.animationState = 'idle';
+      } else if (moving) {
         this.animationState = sprinting ? 'run' : 'walk';
-
         this.animationSpeed = sprinting ? 1 : 0.58;
-
       } else {
         this.animationState = 'idle';
         this.animationSpeed = 0;
@@ -403,59 +504,38 @@ export class PlayerController {
     // Stamina
     this.updateStamina(dt, sprinting);
 
-    // Camera rotation
+    // Camera rotation follows the player.
     const targetYaw = this.mesh.rotation.y;
 
-    const yawDifference =
-      Math.atan2(
-        Math.sin(targetYaw - this.camYaw),
-        Math.cos(targetYaw - this.camYaw)
-      );
+    const yawDifference = Math.atan2(
+      Math.sin(targetYaw - this.camYaw),
+      Math.cos(targetYaw - this.camYaw)
+    );
 
     this.camYaw += yawDifference * (
       1 - Math.exp(-7 * dt)
     );
 
     // Jump
-    if (keys['Space'] && this.isGrounded) {
+    if (jumpPressed && this.isGrounded && this.dodgeTimer <= 0) {
       this.velocity.y = this.jumpForce;
       this.isGrounded = false;
     }
 
     // Gravity
     this.velocity.y -= this.gravity * dt;
-
     this.mesh.position.y += this.velocity.y * dt;
 
-    // Ground detection
-    const island = world.getIslandAt(
-      this.mesh.position
-    );
-
-    const floorY = island
-      ? island.groundY
-      : 0.2;
-
-    if (this.mesh.position.y <= floorY) {
-      this.mesh.position.y = floorY;
-
-      this.velocity.y = 0;
-      this.isGrounded = true;
-
-    } else {
-      this.isGrounded = false;
-    }
+    // Ground and island collision
+    this.updateGround(world);
 
     // Animation priorities
     if (this.dodgeTimer > 0) {
       this.animationState = 'dodge';
-
     } else if (!this.isGrounded) {
       this.animationState = 'jump';
-
     } else if (this.gatlingAnimTimer > 0) {
       this.animationState = 'gatling';
-
     } else if (this.pistolAnimTimer > 0) {
       this.animationState = 'pistol';
     }
@@ -484,12 +564,10 @@ export class PlayerController {
       progress = 1 - (
         this.dodgeTimer / this.dodgeDuration
       );
-
     } else if (this.animationState === 'pistol') {
       progress = 1 - (
         this.pistolAnimTimer / this.pistolAnimDuration
       );
-
     } else if (this.animationState === 'gatling') {
       progress = 1 - (
         this.gatlingAnimTimer / this.gatlingAnimDuration
@@ -505,7 +583,9 @@ export class PlayerController {
   }
 
   updateCamera(target, distance, dt = 0.016) {
-    if (!target || !this.camera) return;
+    if (!target || !this.camera) {
+      return;
+    }
 
     const cosPitch = Math.cos(this.camPitch);
     const sinPitch = Math.sin(this.camPitch);
