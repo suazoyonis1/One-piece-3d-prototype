@@ -1,0 +1,8 @@
+Model Information:
+* title:	PSX Houses
+* source:	https://sketchfab.com/3d-models/psx-houses-c535b11378194028b5410e4e60afdad5
+* author:	domi236 (https://sketchfab.com/domi236)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
