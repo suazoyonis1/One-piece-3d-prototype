@@ -191,7 +191,7 @@ export class World {
     sun.position.set(120, 180, 100);
     sun.castShadow = true;
 
-    sun.shadow.mapSize.set(3072, 3072);
+    sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -350;
     sun.shadow.camera.right = 350;
     sun.shadow.camera.top = 350;
