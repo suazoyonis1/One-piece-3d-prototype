@@ -1,0 +1,11 @@
+Model Information:
+* title:	Rock Game Assets
+* source:	https://sketchfab.com/3d-models/rock-game-assets-4938bf45561447efa2c7048d51ff0fbc
+* author:	Ribfan Hariyanto (https://sketchfab.com/ribfanh)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Rock Game Assets" (https://sketchfab.com/3d-models/rock-game-assets-4938bf45561447efa2c7048d51ff0fbc) by Ribfan Hariyanto (https://sketchfab.com/ribfanh) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
