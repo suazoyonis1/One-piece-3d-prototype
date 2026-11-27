@@ -1379,11 +1379,27 @@ for (const endZ of [-depth / 2 - 0.12, depth / 2 + 0.12]) {
       if((b.breaches||[]).some(v=>Math.abs(lx-v.x)<v.width/2+radius&&Math.abs(lz-v.z)<v.depth/2+radius&&position.y<(b.baseY||0)+v.height+.4))continue;
       // Compact shanties use a solid footprint: their simple box-built
       // walls have no traversable interior, so resolve from the nearest edge.
-      if (b.solidFootprint && Math.abs(lx) < hx + radius && Math.abs(lz) < hz + radius) {
-        const pushX = hx + radius - Math.abs(lx);
-        const pushZ = hz + radius - Math.abs(lz);
-        if (pushX < pushZ) position.x += Math.sign(lx || 1) * pushX;
-        else position.z += Math.sign(lz || 1) * pushZ;
+      if (b.solidFootprint) {
+        // Treat the entire shanty footprint as a solid obstacle. Resolve in
+        // local building space, then transform back to world space.
+        if (Math.abs(lx) <= hx + radius && Math.abs(lz) <= hz + radius &&
+            position.y <= (b.baseY || 0) + (b.collisionHeight || 100)) {
+          const pushX = hx + radius - Math.abs(lx);
+          const pushZ = hz + radius - Math.abs(lz);
+          if (pushX < pushZ) {
+            const resolvedX = Math.sign(lx || 1) * (hx + radius + 0.025);
+            const wx = c * resolvedX + sn * lz;
+            const wz = -sn * resolvedX + c * lz;
+            position.x = b.x + wx;
+            position.z = b.z + wz;
+          } else {
+            const resolvedZ = Math.sign(lz || 1) * (hz + radius + 0.025);
+            const wx = c * lx + sn * resolvedZ;
+            const wz = -sn * lx + c * resolvedZ;
+            position.x = b.x + wx;
+            position.z = b.z + wz;
+          }
+        }
         continue;
       }
       // Only collide with the perimeter walls. Doorways and jump-through windows remain usable.
