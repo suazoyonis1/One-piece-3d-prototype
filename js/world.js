@@ -215,8 +215,8 @@ export class World {
     const waterGeometry = new THREE.PlaneGeometry(
       2400,
       2400,
-      144,
-      144
+      96,
+      96
     );
 
     waterGeometry.rotateX(-Math.PI / 2);
