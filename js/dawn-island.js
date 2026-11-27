@@ -22,7 +22,7 @@ function addTree(scene, x, z, scale = 1) {
   scene.add(g);
 }
 
-function addHouse(scene, x, z, width, height, color, roofColor) {
+function addHouse(scene, world, x, z, width, height, color, roofColor) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(new THREE.BoxGeometry(width,height,width*.8), mat(color));
   body.position.y = height/2;
@@ -35,6 +35,11 @@ function addHouse(scene, x, z, width, height, color, roofColor) {
   g.position.set(x,2.2,z);
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   scene.add(g);
+  // These small shanties are solid structures, not decorative meshes.
+  world.buildingColliders.push({
+    x, z, rotation: 0, width: width + 0.8, depth: width * 0.8 + 0.8,
+    baseY: 2.2, solidFootprint: true, breaches: [], wallMeshes: []
+  });
 }
 
 function addLabel(scene, text, x, z, color = 0xffe08a) {
@@ -94,9 +99,11 @@ export function buildDawnIsland(scene, world) {
 
   // Gray Terminal: dense, rough shanty settlement
   for (let i=0;i<24;i++) {
-    const x = -135 + (i%6)*12 + Math.sin(i*2)*3;
-    const z = -108 + Math.floor(i/6)*13 + Math.cos(i)*3;
-    addHouse(scene,x,z,6 + (i%3),3.5 + (i%2),[0x76604a,0x8a7358,0x6b6257][i%3],0x4b4037);
+    const row = Math.floor(i / 4);
+    const column = i % 4;
+    const x = -157 + column * 19 + Math.sin(i * 1.7) * 2.2;
+    const z = -145 + row * 18 + (column % 2) * 4 + Math.cos(i * 1.3) * 2;
+    addHouse(scene,world,x,z,6.2 + (i%3)*0.9,3.5 + (i%2)*0.6,[0x76604a,0x8a7358,0x6b6257][i%3],0x4b4037);
   }
   for (let i=0;i<26;i++) {
     const a=i*2.4, r=8+(i%6)*5;
@@ -110,8 +117,8 @@ export function buildDawnIsland(scene, world) {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(3,10,38),wallMat);
     wall.position.set(x,7,z); wall.rotation.y=rot; wall.castShadow=true; scene.add(wall);
   }
-  addHouse(scene,116,-130,12,9,0xe6d5b3,0x9d8d79);
-  addHouse(scene,145,-130,12,9,0xe0cba5,0x8b806f);
+  addHouse(scene,world,116,-130,12,9,0xe6d5b3,0x9d8d79);
+  addHouse(scene,world,145,-130,12,9,0xe0cba5,0x8b806f);
   const palace = new THREE.Group();
   const base = new THREE.Mesh(new THREE.BoxGeometry(42,20,28),mat(0xe8dcc4));
   base.position.y=12;
