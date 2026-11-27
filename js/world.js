@@ -916,14 +916,26 @@ export class World {
     }
     const ridge=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,depth+.92,12),wood);
     ridge.rotation.x=Math.PI/2;ridge.position.set(0,height+2.08,0);group.add(ridge);
-    // Close both gable ends so the roof silhouette has no exposed triangular gaps.
-    const gableShape=new THREE.Shape();gableShape.moveTo(-width*.5,0);gableShape.lineTo(width*.5,0);gableShape.lineTo(0,2.05);gableShape.close();
-    const gableGeo=new THREE.ShapeGeometry(gableShape);
-    for(const endZ of [-depth/2-.12,depth/2+.12]){const gable=new THREE.Mesh(gableGeo,wallMaterial.clone());gable.position.set(0,height,endZ);gable.castShadow=true;gable.receiveShadow=true;group.add(gable);}
-    // Continuous ridge flashing and eave fascia hide small seams between roof planes.
-    for(const side of [-1,1]){const fascia=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,depth+.86),wood);fascia.position.set(side*width*.49,height+.08,0);fascia.rotation.z=side===-1?.72:-.72;group.add(fascia);}
-    // Small chimney gives the roofline a lived-in silhouette.
-    if(large){const chimney=new THREE.Mesh(new THREE.BoxGeometry(.72,1.6,.72),wallStyles[0]);chimney.position.set(width*.28,height+2.05,-depth*.22);chimney.castShadow=true;group.add(chimney);}
+   
+// Close both gable ends so the roof silhouette has no exposed triangular gaps.
+const gableShape = new THREE.Shape();
+
+gableShape.moveTo(-width * 0.5, 0);
+gableShape.lineTo(width * 0.5, 0);
+gableShape.lineTo(0, 2.05);
+
+// Explicitly return to the starting point
+gableShape.lineTo(-width * 0.5, 0);
+
+const gableGeo = new THREE.ShapeGeometry(gableShape);
+
+for (const endZ of [-depth / 2 - 0.12, depth / 2 + 0.12]) {
+    const gable = new THREE.Mesh(gableGeo, wallMaterial.clone());
+    gable.position.set(0, height, endZ);
+    gable.castShadow = true;
+    gable.receiveShadow = true;
+    group.add(gable);
+}
 
     // Door
     const door = new THREE.Mesh(
