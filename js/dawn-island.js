@@ -74,7 +74,9 @@ export function buildDawnIsland(scene, world) {
   world.islands.push({
     id:'dawn-mainland', name:'Dawn Island',
     center:new THREE.Vector3(0,0,-75), radius:330, groundY:2.0,
-    polygon:[[-190,55],[-230,-15],[-230,-245],[-150,-325],[0,-390],[155,-335],[235,-125],[165,65]]
+    // World-space shoreline outline (the terrain shape is translated to z=-75
+    // and its local Y axis becomes negative world Z after rotation).
+    polygon:[[-190,55],[-225,18],[-232,-72],[-218,-190],[-150,-325],[0,-390],[155,-335],[225,-260],[245,-125],[235,25],[165,65]]
   });
 
   // Mount Colubo ridgeline and wooded foothills
@@ -120,10 +122,25 @@ export function buildDawnIsland(scene, world) {
   scene.add(palace);
   addLabel(scene,'GOA KINGDOM',130,-210,0xffe6ae);
 
-  // Trail markers and scattered wilderness trees make the route readable.
-  for(let i=0;i<48;i++){
-    const t=i/47;
-    addTree(scene,-8 + t*118, -35 - t*86 + Math.sin(t*12)*8,.65+(i%3)*.12);
-  }
+  // A natural woodland transition: irregular clusters with open gaps for
+  // the footpath, rather than a ruler-straight line of identical trees.
+  const groves = [
+    { x: -42, z: -24, count: 9, radius: 19 },
+    { x:  42, z: -48, count: 11, radius: 23 },
+    { x:  76, z: -92, count: 10, radius: 21 },
+    { x: -34, z: -91, count: 8, radius: 17 },
+    { x:  12, z: -132, count: 9, radius: 24 }
+  ];
+  groves.forEach((grove, groveIndex) => {
+    for (let i = 0; i < grove.count; i++) {
+      const angle = i * 2.399 + groveIndex * 0.73;
+      const distance = grove.radius * (0.28 + ((i * 7) % 11) / 14);
+      const x = grove.x + Math.cos(angle) * distance;
+      const z = grove.z + Math.sin(angle) * distance;
+      // Keep the central route and settlement approaches clear.
+      if (Math.abs(x - z * -0.72 - 17) < 9) continue;
+      addTree(scene, x, z, .62 + ((i + groveIndex) % 4) * .13);
+    }
+  });
   addLabel(scene,'FOOSHA VILLAGE',0,7,0xffe08a);
 }
