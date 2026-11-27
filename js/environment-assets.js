@@ -46,12 +46,12 @@ export async function loadEnvironmentAssets(world) {
   const jobs = await Promise.allSettled([
     load(loader, `${ASSET_ROOT}grass/scene.gltf`),
     load(loader, `${ASSET_ROOT}rock-game-assets/scene.gltf`),
-    load(loader, `${ASSET_ROOT}low-poly-forest-tree-pack/scene.gltf`),
+    Promise.resolve(null),
     load(loader, `${ASSET_ROOT}freshwater-grouper/scene.gltf`),
-    load(loader, `${ASSET_ROOT}ocean-wave/scene.gltf`),
-    load(loader, `${ASSET_ROOT}ocean-wave-maya/scene.gltf`),
-    load(loader, `${ASSET_ROOT}forest-mountain-landscape/scene.gltf`),
-    load(loader, `${ASSET_ROOT}psx-houses/scene.gltf`)
+    Promise.resolve(null),
+    Promise.resolve(null),
+    Promise.resolve(null),
+    Promise.resolve(null)
   ]);
 
   const [grassResult, rockResult, forestResult, fishResult, waveResult, mayaWaveResult, mountainLandscapeResult, psxHousesResult] = jobs;
@@ -101,7 +101,7 @@ export async function loadEnvironmentAssets(world) {
     console.warn('Optional rock model could not load; keeping procedural rocks.', rockResult.reason);
   }
 
-  if (forestResult.status === 'fulfilled') {
+  if (forestResult?.status === 'fulfilled' && forestResult.value) {
     // The source is a complete multi-tree/rock display pack. Use one scaled
     // grove as a landmark rather than cloning all 30 meshes across the map.
     const grove = prepareModel(forestResult.value.scene, { castShadow: false });
@@ -119,7 +119,7 @@ export async function loadEnvironmentAssets(world) {
   // One animated crest mesh adds a readable breaking-wave accent offshore.
   // The base ocean remains the primary water surface and continues its existing
   // procedural animation; this optional GLTF is deliberately kept to one copy.
-  if (waveResult.status === 'fulfilled') {
+  if (waveResult?.status === 'fulfilled' && waveResult.value) {
     const waveScene = prepareModel(waveResult.value.scene, { castShadow: false, receiveShadow: false });
     waveScene.scale.setScalar(0.58);
     waveScene.position.set(720, 0.7, 520);
@@ -149,7 +149,7 @@ export async function loadEnvironmentAssets(world) {
 
   // A second, larger animated breaker from the Maya wave pack. It is placed
   // farther offshore as a single accent; the procedural ocean remains primary.
-  if (mayaWaveResult.status === 'fulfilled') {
+  if (mayaWaveResult?.status === 'fulfilled' && mayaWaveResult.value) {
     const mayaWave = prepareModel(mayaWaveResult.value.scene, { castShadow: false, receiveShadow: false });
     mayaWave.scale.setScalar(1.18);
     // Source mesh is authored in a Z-up orientation; rotate into Three.js Y-up.
@@ -181,7 +181,7 @@ export async function loadEnvironmentAssets(world) {
   // A single mountain-forest landscape set piece expands the Dawn Island
   // wilderness silhouette. Keep it as a distant scenic feature, not a new
   // collision surface; the existing island terrain and movement remain intact.
-  if (mountainLandscapeResult.status === 'fulfilled') {
+  if (mountainLandscapeResult?.status === 'fulfilled' && mountainLandscapeResult.value) {
     const mountainLandscape = prepareModel(mountainLandscapeResult.value.scene, {
       castShadow: false,
       receiveShadow: false
@@ -206,7 +206,7 @@ export async function loadEnvironmentAssets(world) {
   // Low-poly PSX-style buildings add a compact architectural cluster to
   // Shells Town. Keep this as visual set dressing so existing paths, NPCs,
   // collisions, and quest interactions remain unchanged.
-  if (psxHousesResult.status === 'fulfilled') {
+  if (psxHousesResult?.status === 'fulfilled' && psxHousesResult.value) {
     const houseCluster = prepareModel(psxHousesResult.value.scene, {
       castShadow: true,
       receiveShadow: true
