@@ -625,8 +625,13 @@ export class PlayerController {
     this.velocity.y -= this.gravity * dt;
     this.mesh.position.y += this.velocity.y * dt;
 
+    // Resolve building collisions inside the controller as well as the
+    // main loop, so movement cannot step through compact terminal houses.
+    if (!isSailing) world?.resolvePlayerCollision?.(this.mesh.position, 0.72);
+
     // Ground and island collision
     this.updateGround(world);
+    if (!isSailing) world?.resolvePlayerCollision?.(this.mesh.position, 0.72);
 
     // Animation priorities
     if (this.dodgeTimer > 0) {
