@@ -1377,6 +1377,15 @@ for (const endZ of [-depth / 2 - 0.12, depth / 2 + 0.12]) {
       const lx=c*dx-sn*dz,lz=sn*dx+c*dz;
       const hx=b.width/2, hz=b.depth/2;
       if((b.breaches||[]).some(v=>Math.abs(lx-v.x)<v.width/2+radius&&Math.abs(lz-v.z)<v.depth/2+radius&&position.y<(b.baseY||0)+v.height+.4))continue;
+      // Compact shanties use a solid footprint: their simple box-built
+      // walls have no traversable interior, so resolve from the nearest edge.
+      if (b.solidFootprint && Math.abs(lx) < hx + radius && Math.abs(lz) < hz + radius) {
+        const pushX = hx + radius - Math.abs(lx);
+        const pushZ = hz + radius - Math.abs(lz);
+        if (pushX < pushZ) position.x += Math.sign(lx || 1) * pushX;
+        else position.z += Math.sign(lz || 1) * pushZ;
+        continue;
+      }
       // Only collide with the perimeter walls. Doorways and jump-through windows remain usable.
       const inX=Math.abs(lx)<hx+radius,inZ=Math.abs(lz)<hz+radius;
       if(!inX||!inZ)continue;
@@ -1499,9 +1508,11 @@ for (const endZ of [-depth / 2 - 0.12, depth / 2 + 0.12]) {
 
     positions.needsUpdate = true;
 
-    // Recalculate ocean normals less frequently
-    if (Math.floor(this.waterTime * 10) !==
-        Math.floor((this.waterTime - dt) * 10)) {
+    // Normals are visually subtle on this broad water plane; update them
+    // at a lower cadence to avoid repeated full-geometry CPU work.
+    this.normalUpdateElapsed = (this.normalUpdateElapsed || 0) + dt;
+    if (this.normalUpdateElapsed >= 0.25) {
+      this.normalUpdateElapsed = 0;
       this.oceanMesh.geometry.computeVertexNormals();
     }
 
