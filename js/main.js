@@ -35,7 +35,7 @@ class OnePieceGame {
       });
 
       this.renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio || 1, 1.75)
+        Math.min(window.devicePixelRatio || 1, 1.35)
       );
 
       this.renderer.setSize(
@@ -468,30 +468,42 @@ class OnePieceGame {
     if (this.isSailing) {
       const islands = this.world.islands || [];
 
+      const shipPosition = this.ship.mesh.position;
       const island = islands.find(i => {
-        if (!i?.center || typeof i.radius !== 'number') {
-          return false;
-        }
-
-        const distance = Math.hypot(
-          this.ship.mesh.position.x - i.center.x,
-          this.ship.mesh.position.z - i.center.z
-        );
-
-        return distance <= i.radius + 28;
+        if (!i?.center || typeof i.radius !== 'number') return false;
+        return Math.hypot(shipPosition.x - i.center.x, shipPosition.z - i.center.z) <= i.radius + 34;
       });
 
       if (island) {
-        this.isSailing = false;
-        this.ship.isControlled = false;
+        // Find actual walkable land near the ship. This also respects polygon
+        // coastlines, unlike placing the player at an arbitrary radius offset.
+        let landing = null;
+        for (let radius = 5; radius <= 72 && !landing; radius += 4) {
+          for (let step = 0; step < 32; step++) {
+            const angle = step * Math.PI * 2 / 32;
+            const candidate = new THREE.Vector3(
+              shipPosition.x + Math.cos(angle) * radius,
+              island.groundY ?? 2,
+              shipPosition.z + Math.sin(angle) * radius
+            );
+            if (this.world.getIslandAt(candidate) === island) {
+              landing = candidate;
+              break;
+            }
+          }
+        }
 
-        this.player.mesh.position.set(
-          island.center.x,
-          island.groundY ?? 0.2,
-          island.center.z + island.radius - 8
-        );
-
-        this.player.velocity?.set(0, 0, 0);
+        if (landing) {
+          this.isSailing = false;
+          this.ship.isControlled = false;
+          this.player.mesh.position.copy(landing);
+          this.player.lastSafePosition.copy(landing);
+          this.player.velocity?.set(0, 0, 0);
+          this.player.isGrounded = true;
+          this.showBanner(`Landed at ${island.name}!`);
+        } else {
+          this.showBanner('Move closer to the shoreline to land.');
+        }
       }
 
       return;
@@ -656,7 +668,13 @@ class OnePieceGame {
 
       this.updateUI();
       this.updateInteractionPrompt();
-      this.drawMinimap();
+      // The minimap is a 2D canvas; refreshing it every rendered frame wastes
+      // CPU time without making navigation meaningfully clearer.
+      this.minimapElapsed = (this.minimapElapsed || 0) + dt;
+      if (this.minimapElapsed >= 0.12) {
+        this.minimapElapsed = 0;
+        this.drawMinimap();
+      }
 
       this.renderer.render(
         this.scene,
