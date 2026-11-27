@@ -450,17 +450,15 @@ export class PlayerController {
 
     const island = world.getIslandAt(this.mesh.position);
 
-    // Prevent walking or falling off an island into the ocean.
+    // Let the player leave the shoreline naturally. If they fall into the
+    // ocean, recover at the last safe shoreline instead of snapping sideways.
     if (!island) {
-      this.mesh.position.x = this.lastSafePosition.x;
-      this.mesh.position.z = this.lastSafePosition.z;
-
-      if (this.mesh.position.y < this.lastSafePosition.y) {
-        this.mesh.position.y = this.lastSafePosition.y;
-        this.velocity.y = 0;
+      this.isGrounded = false;
+      if (this.mesh.position.y < -12) {
+        this.mesh.position.copy(this.lastSafePosition);
+        this.velocity.set(0, 0, 0);
         this.isGrounded = true;
       }
-
       return;
     }
 
