@@ -37,8 +37,9 @@ function addHouse(scene, world, x, z, width, height, color, roofColor) {
   scene.add(g);
   // These small shanties are solid structures, not decorative meshes.
   world.buildingColliders.push({
-    x, z, rotation: 0, width: width + 0.8, depth: width * 0.8 + 0.8,
-    baseY: 2.2, solidFootprint: true, breaches: [], wallMeshes: []
+    x, z, rotation: 0, width: width + 1.6, depth: width * 0.8 + 1.6,
+    baseY: 2.2, solidFootprint: true, breaches: [], wallMeshes: [],
+    collisionHeight: height + height * 0.65
   });
 }
 
@@ -101,8 +102,9 @@ export function buildDawnIsland(scene, world) {
   for (let i=0;i<24;i++) {
     const row = Math.floor(i / 4);
     const column = i % 4;
-    const x = -157 + column * 19 + Math.sin(i * 1.7) * 2.2;
-    const z = -145 + row * 18 + (column % 2) * 4 + Math.cos(i * 1.3) * 2;
+    // Wider, staggered lanes give each shanty a visible yard and a walkable path.
+    const x = -164 + column * 23 + (row % 2) * 4 + Math.sin(i * 1.7) * 1.5;
+    const z = -151 + row * 22 + Math.cos(i * 1.3) * 1.6;
     addHouse(scene,world,x,z,6.2 + (i%3)*0.9,3.5 + (i%2)*0.6,[0x76604a,0x8a7358,0x6b6257][i%3],0x4b4037);
   }
   for (let i=0;i<26;i++) {
